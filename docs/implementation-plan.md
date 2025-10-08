@@ -53,7 +53,7 @@ This document enumerates the outstanding work required to transform the current 
 - **Updates module**
   - Support upload of update packages (ZIP/PKG), validation, optional backup, maintenance mode, file replacement, migration execution, log viewing, audit, and rollback to previous version.
 - **Connectors catalogue**
-  - CRUD for connector profiles (Database, External SQL, ~~SMTP~~, SMS, LDAP, OIDC, Webhooks, SFTP/FTPS, Storage, Printing, Observability, Zabbix), test connections with readable errors, secret rotation, retry/backoff, periodic health checks, status dashboard. (SMTP connector with test e-mail is now implemented; remaining connector types still pending.)
+  - Rozšířit nově dostupné REST API a React stránku „Konektory“ o profily pro Database, External SQL, Webhooks, SFTP/FTPS, Storage, Printing, Observability a Zabbix včetně CRUD operací, health-checků, plánovaných ověřování, retry/backoff politik a správy tajemství (aktuální iterace pokrývá SMTP/SMS s testy a LDAP/OIDC jako přehledové záznamy).
 - **Observability**
   - Expose structured logging, /health, /metrics, OpenTelemetry exporter configuration, correlation IDs in responses, diagnostics export for support.
 

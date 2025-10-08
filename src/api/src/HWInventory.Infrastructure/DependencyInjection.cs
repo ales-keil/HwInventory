@@ -7,6 +7,7 @@ using HWInventory.Domain.Security;
 using HWInventory.Infrastructure.Jobs;
 using HWInventory.Infrastructure.Labels;
 using HWInventory.Infrastructure.Persistence;
+using HWInventory.Infrastructure.Connectors;
 using HWInventory.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -185,6 +186,7 @@ public static class DependencyInjection
         services.AddScoped<ICaptchaValidator, CaptchaValidator>();
         services.AddScoped<ISmsGateway, SmsGateway>();
         services.AddScoped<ISmsConnectorStore, SmsConnectorStore>();
+        services.AddScoped<IConnectorCatalogService, ConnectorCatalogService>();
         services.AddScoped<IEmailConnectorStore, EmailConnectorStore>();
         services.AddScoped<IPasswordPolicyConfigurationStore, PasswordPolicyConfigurationStore>();
         services.AddScoped<ISsprService, SsprService>();
