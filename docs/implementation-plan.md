@@ -125,9 +125,9 @@ designed to produce a demonstrable increment that can be validated with automate
      behaviour.
    - Implement handover PDFs/e-mail notifications, label management with ZPL/PDF rendering, and export/import jobs with dry-run.
 4. **Operations & Integrations**
-   - Finish connectors (SMTP, SMS, LDAP/OIDC, Webhooks, SFTP/FTPS, Storage, Printing, Observability) with health reporting and
+   - Finish connectors (SMTP, SMS, LDAP/OIDC complete; add Webhooks, SFTP/FTPS, Storage, Printing, enhanced Observability, Zabbix) with health reporting and
      secret rotation.
-   - Build the Updates, Backup & Restore, Reports & Schedules, and Observability modules plus dashboard widgets.
+   - Build the Updates, Backup & Restore, Reports & Schedules, and Observability dashboards/alerting modules plus widgets.
 5. **Frontend completion & UX polish**
    - Deliver the full React/Vite admin app, dark/light theming, contextual help, manual viewer, and feature-specific pages.
    - Add Playwright tests and align UI copy with terminology in the specification.

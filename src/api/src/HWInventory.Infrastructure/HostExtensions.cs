@@ -1,3 +1,5 @@
+using HWInventory.Application.Abstractions;
+using HWInventory.Infrastructure.Observability;
 using HWInventory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +25,10 @@ public static class HostExtensions
         }
 
         await SeedData.InitializeAsync(serviceProvider, cancellationToken);
+
+        var observabilityStore = serviceProvider.GetRequiredService<IObservabilityConfigurationStore>();
+        var configuration = await observabilityStore.GetAsync(cancellationToken);
+        ObservabilityLogging.ApplyMinimumLevel(configuration.LogLevel);
         return host;
     }
 }

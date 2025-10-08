@@ -9,6 +9,7 @@ using HWInventory.Infrastructure.Labels;
 using HWInventory.Infrastructure.Persistence;
 using HWInventory.Infrastructure.Connectors;
 using HWInventory.Infrastructure.Security;
+using HWInventory.Infrastructure.Observability;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
@@ -41,6 +42,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddHttpContextAccessor();
+        services.AddMemoryCache();
 
         var identityBuilder = services.AddIdentityCore<AppUser>(options =>
         {
@@ -172,6 +174,9 @@ public static class DependencyInjection
 
             options.AddPolicy(AuthorizationPolicies.SessionsManage, policy =>
                 policy.RequireRole(SystemRoleNames.SuperAdmin));
+
+            options.AddPolicy(AuthorizationPolicies.ObservabilityManage, policy =>
+                policy.RequireRole(SystemRoleNames.SuperAdmin));
         });
 
         services.AddHttpClient("captcha");
@@ -192,6 +197,9 @@ public static class DependencyInjection
         services.AddScoped<ISsprService, SsprService>();
         services.AddScoped<ISsprConfigurationStore, SsprConfigurationStore>();
         services.AddScoped<ISessionTracker, SessionTracker>();
+        services.AddScoped<IObservabilityConfigurationStore, ObservabilityConfigurationStore>();
+        services.AddScoped<IObservabilityRuntime, ObservabilityRuntime>();
+        services.AddSingleton<IRequestMetricsCollector, RequestMetricsCollector>();
 
         services.AddQuartz(q =>
         {

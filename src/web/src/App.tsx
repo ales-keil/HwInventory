@@ -5,6 +5,7 @@ import { FirstRunWizardPage } from './pages/FirstRunWizardPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { EmailSettingsPage } from './pages/EmailSettingsPage';
 import { ConnectorsPage } from './pages/ConnectorsPage';
+import { ObservabilitySettingsPage } from './pages/ObservabilitySettingsPage';
 import { SecuritySettingsPage } from './pages/SecuritySettingsPage';
 
 const navItems = [
@@ -21,7 +22,8 @@ const navItems = [
 const settingsItems = [
   { to: 'security', label: 'Security & Auth' },
   { to: 'email', label: 'Email (SMTP)' },
-  { to: 'connectors', label: 'Konektory' }
+  { to: 'connectors', label: 'Konektory' },
+  { to: 'observability', label: 'Observabilita' }
 ];
 
 const Layout = () => {
@@ -96,6 +98,7 @@ const App = () => (
         <Route path="security" element={<SecuritySettingsPage />} />
         <Route path="email" element={<EmailSettingsPage />} />
         <Route path="connectors" element={<ConnectorsPage />} />
+        <Route path="observability" element={<ObservabilitySettingsPage />} />
         <Route path="*" element={<PlaceholderPage title="Settings" description="Administrative configuration center." />} />
       </Route>
       <Route path="modules" element={<PlaceholderPage title="Modules" description="Feature toggle management." />} />

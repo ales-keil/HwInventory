@@ -18,4 +18,5 @@ public static class AuthorizationPolicies
     public const string DashboardView = "Dashboard.View";
     public const string SecurityManage = "Security.Manage";
     public const string SessionsManage = "Security.Sessions.Manage";
+    public const string ObservabilityManage = "Observability.Manage";
 }
