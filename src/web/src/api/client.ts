@@ -1,7 +1,8 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 export const apiClient = axios.create({
   baseURL: '/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -9,8 +10,10 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const message = error?.response?.data?.detail || error?.message || 'Neznámá chyba';
-    return Promise.reject(new Error(message));
+  (error: AxiosError) => {
+    const message = (error.response?.data as { detail?: string } | undefined)?.detail || error.message || 'Neznámá chyba';
+    const enhancedError = new Error(message) as Error & { status?: number };
+    enhancedError.status = error.response?.status;
+    return Promise.reject(enhancedError);
   }
 );
