@@ -1,5 +1,8 @@
+using System;
+using System.Threading.Tasks;
 using HWInventory.Application.Abstractions;
 using HWInventory.Domain.Entities;
+using HWInventory.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +22,73 @@ public class AuthController : ControllerBase
         _userManager = userManager;
         _signInManager = signInManager;
         _totpService = totpService;
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<ActionResult> LoginAsync([FromBody] LoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.UserNameOrEmail) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Neplatné přihlašovací údaje",
+                Detail = "Uživatelské jméno/e-mail i heslo jsou povinné."
+            });
+        }
+
+        AppUser? user = request.UserNameOrEmail.Contains('@')
+            ? await _userManager.FindByEmailAsync(request.UserNameOrEmail)
+            : await _userManager.FindByNameAsync(request.UserNameOrEmail);
+
+        if (user is null || user.Status != EntityStatus.Active)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Přihlášení selhalo",
+                Detail = "Zadané údaje nejsou platné."
+            });
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, true);
+
+        if (result.RequiresTwoFactor)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Vyžadováno vícefaktorové ověření",
+                Detail = "Tento účet vyžaduje zadání TOTP kódu."
+            });
+        }
+
+        if (result.IsLockedOut)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Účet je dočasně zablokován",
+                Detail = "Překročili jste maximální počet pokusů. Zkuste to prosím později."
+            });
+        }
+
+        if (!result.Succeeded)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Přihlášení selhalo",
+                Detail = "Zadané údaje nejsou platné."
+            });
+        }
+
+        return NoContent();
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<ActionResult> LogoutAsync()
+    {
+        await _signInManager.SignOutAsync();
+        return NoContent();
     }
 
     [HttpGet("me")]
@@ -103,6 +173,8 @@ public class AuthController : ControllerBase
 
         return NoContent();
     }
+
+    public record LoginRequest(string UserNameOrEmail, string Password, bool RememberMe);
 
     public record TotpVerificationRequest(string Code);
 }

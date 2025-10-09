@@ -1,7 +1,10 @@
+using System;
+using System.Linq;
 using HWInventory.Domain.Entities;
 using HWInventory.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HWInventory.Infrastructure.Persistence;
@@ -32,6 +35,8 @@ public static class SeedData
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
         if (!await roleManager.Roles.AnyAsync(cancellationToken))
         {
@@ -77,5 +82,33 @@ public static class SeedData
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        if (!await userManager.Users.AnyAsync(cancellationToken))
+        {
+            var adminEmail = configuration["SeedAdmin:Email"] ?? "admin@localhost";
+            var adminPassword = configuration["SeedAdmin:Password"] ?? "ChangeMe!123!";
+
+            var adminUser = new AppUser
+            {
+                UserName = adminEmail,
+                NormalizedUserName = adminEmail.ToUpperInvariant(),
+                Email = adminEmail,
+                NormalizedEmail = adminEmail.ToUpperInvariant(),
+                DisplayName = "Administrator",
+                EmailConfirmed = true,
+                CreatedAtUtc = DateTime.UtcNow,
+                CreatedBy = "seed",
+                Status = EntityStatus.Active
+            };
+
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create initial admin account: {errors}");
+            }
+
+            await userManager.AddToRoleAsync(adminUser, SystemRoleNames.SuperAdmin);
+        }
     }
 }
