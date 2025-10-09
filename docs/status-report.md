@@ -21,6 +21,8 @@ _Last updated: 2025-10-09T12:30:00Z_
 - Kompletní inventární UI: React stránky „Servery“, „Síťová zařízení“, „Pracovní stanice“ s CRUD formuláři, stránkováním, podporou VLAN/IP polí a vazbou na číselníky, dále „Audit“, „Číselníky“, „Štítky“ (správa šablon, ZPL/PDF náhledy, tiskové úlohy) a „Moduly“ pro přepínání feature flagů.
 - Label rendering services that produce QuestPDF previews and ZPL output, plus REST endpoints for inventory CRUD (servers, network devices, workstations), dictionaries, modules, dashboard summary, audit exploration, and TOTP enrollment.
 - Lokální bootstrap: seedování nyní vytváří výchozího Super Admina (`admin@localhost` / `ChangeMe!123!`, přepisovatelné přes `SeedAdmin:*`) a `/api/auth/login` & `/api/auth/logout` poskytují cookie-based přihlášení/odhlášení pro čistě lokální scénář. Detaily roadmapy jsou zachyceny v [`docs/minimal-deployment-plan.md`](minimal-deployment-plan.md).
+- Lokální bootstrap: seedování nyní vytváří výchozího Super Admina (`admin@localhost` / `ChangeMe!123!`, přepisovatelné přes `SeedAdmin:*`) a `/api/auth/login` & `/api/auth/logout` poskytují cookie-based přihlášení/odhlášení pro čistě lokální scénář. Detaily roadmapy jsou zachyceny v [`docs/minimal-deployment-plan.md`](minimal-deployment-plan.md).
+- Nové integrační testy (`HWInventory.Api.IntegrationTests`) ověřují end-to-end CRUD životní cyklus pro Servery, Síťová zařízení i Workstations přes skutečné HTTP volání včetně přechodů stavů (retire/restore/delete).
 - PowerShell installer scaffold that provisions IIS resources and patches connection strings, alongside documentation describing the remaining backlog and execution plan.
 
 ## Outstanding Work (High-Level)
