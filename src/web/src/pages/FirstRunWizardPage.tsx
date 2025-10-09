@@ -57,6 +57,7 @@ const stepDefinitions = [
 export const FirstRunWizardPage = () => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
+  const [localModeEnabled, setLocalModeEnabled] = useState(false);
   const summaryQuery = useQuery({
     queryKey: ['security', 'summary', 'wizard'],
     queryFn: getSecuritySummary,
@@ -66,7 +67,8 @@ export const FirstRunWizardPage = () => {
   const clampedStep = useMemo(() => Math.min(Math.max(activeStep, 0), stepDefinitions.length - 1), [activeStep]);
   const step = stepDefinitions[clampedStep];
   const securityReady = summaryQuery.data?.criticalReady ?? false;
-  const securityBlocked = step.key === 'security' && !securityReady && !summaryQuery.isError;
+  const securityBlocked =
+    step.key === 'security' && !securityReady && !summaryQuery.isError && !localModeEnabled;
 
   const goNext = () => {
     if (clampedStep < stepDefinitions.length - 1) {
@@ -113,6 +115,25 @@ export const FirstRunWizardPage = () => {
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {step.content}
+        {step.key === 'security' && !securityReady && !summaryQuery.isError && (
+          <div className="mt-8 rounded-lg border border-dashed border-amber-400 bg-amber-50/60 p-4 text-sm text-amber-800 dark:border-amber-500 dark:bg-amber-900/40 dark:text-amber-100">
+            <p className="font-semibold">Nemáte připravené externí konektory?</p>
+            <p className="mt-2">
+              Pro čistě lokální nasazení můžete pokračovat i bez nastavení OIDC/LDAP/SMS konektorů. Zvolte níže možnost
+              „Pokračovat v&nbsp;lokálním režimu“ – průvodce dokončíme s výchozím lokálním přihlášením a konektory lze
+              doplnit později v&nbsp;Nastavení.
+            </p>
+            <label className="mt-4 flex items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                checked={localModeEnabled}
+                onChange={(event) => setLocalModeEnabled(event.target.checked)}
+              />
+              Pokračovat v lokálním režimu
+            </label>
+          </div>
+        )}
       </section>
 
       <div className="flex justify-between">

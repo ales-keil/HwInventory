@@ -6,8 +6,8 @@ pracovat pouze s lokálními účty a obsluhovat evidence **Servers / Network de
 | Krok | Stav | Popis |
 | --- | --- | --- |
 | 1 | ✅ Hotovo | Zpřístupnit čistě lokální přihlášení – přidat REST endpointy pro přihlášení/odhlášení, vytvořit výchozího Super Admina při seedování databáze a vše zdokumentovat. |
-| 2 | ⬜ | Doplnit React přihlašovací obrazovku (formulář + volání `/api/auth/login`), session guard pro ochranu administračních stránek a možnost odhlášení. |
-| 3 | ⬜ | Umožnit průvodci prvního spuštění pokračovat i bez externích konektorů (LDAP/OIDC/SMS) – přidat přepínač „Lokální režim“ a aktualizovat readiness kontrolu. |
+| 2 | ✅ Hotovo | Doplnit React přihlašovací obrazovku (formulář + volání `/api/auth/login`), session guard pro ochranu administračních stránek a možnost odhlášení. |
+| 3 | ✅ Hotovo | Umožnit průvodci prvního spuštění pokračovat i bez externích konektorů (LDAP/OIDC/SMS) – přidat přepínač „Lokální režim“ a aktualizovat readiness kontrolu. |
 | 4 | ⬜ | Zjednodušit konfiguraci – připravit `appsettings.Production.json` s ukázkovým connection stringem, vypnout nepotřebné moduly a doplnit README o krátký návod pro čistě lokální nasazení. |
 | 5 | ⬜ | Doplnit inicializační skript (PowerShell) pro vytvoření SQL databáze a naplnění seed dat (číselníky, výchozí admin heslo). |
 | 6 | ⬜ | Provést end-to-end ověření CRUD operací pro Servery/Síťová zařízení/Pracovní stanice – opravit případné chyby v API nebo formulářích. |
