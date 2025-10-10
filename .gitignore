@@ -1,0 +1,27 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Installer artifacts
+publish/
+artifacts/
+*.zip
+*.pkg
+
+# Secrets
+*.pfx
+appsettings.Local.json
+
