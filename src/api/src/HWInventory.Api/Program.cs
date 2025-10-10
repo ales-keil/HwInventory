@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Text.Json.Serialization;
 using HWInventory.Api.Middleware;
 using HWInventory.Application.Abstractions;
@@ -6,6 +8,8 @@ using HWInventory.Infrastructure.Observability;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Infrastructure;
+
+var applyMigrationsOnly = args.Contains("--apply-migrations", StringComparer.OrdinalIgnoreCase);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +41,11 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
+
+if (applyMigrationsOnly)
+{
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {

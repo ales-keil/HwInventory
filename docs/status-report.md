@@ -1,6 +1,6 @@
 # HW Inventory Platform – Current Status
 
-_Last updated: 2025-10-09T12:30:00Z_
+_Last updated: 2025-10-09T15:00:00Z_
 
 ## Implemented Capabilities
 - Monorepo scaffold targeting .NET 8 (API) and React/Vite (admin UI shell) with Tailwind-based dark/light theming.
@@ -20,8 +20,10 @@ _Last updated: 2025-10-09T12:30:00Z_
 - First-run wizard skeleton with a dedicated „Bezpečnostní nastavení“ krok, který agreguje klíčové bezpečnostní formuláře (OIDC/LDAP/SSPR/CAPTCHA/SMS), nově také SMTP konfiguraci a umožňuje aktivovat „lokální režim“ bez externích konektorů pro rychlé dokončení.
 - Kompletní inventární UI: React stránky „Servery“, „Síťová zařízení“, „Pracovní stanice“ s CRUD formuláři, stránkováním, podporou VLAN/IP polí a vazbou na číselníky, dále „Audit“, „Číselníky“, „Štítky“ (správa šablon, ZPL/PDF náhledy, tiskové úlohy) a „Moduly“ pro přepínání feature flagů.
 - Label rendering services that produce QuestPDF previews and ZPL output, plus REST endpoints for inventory CRUD (servers, network devices, workstations), dictionaries, modules, dashboard summary, audit exploration, and TOTP enrollment.
-- Lokální bootstrap: seedování nyní vytváří výchozího Super Admina (`admin@localhost` / `ChangeMe!123!`, přepisovatelné přes `SeedAdmin:*`) a `/api/auth/login` & `/api/auth/logout` poskytují cookie-based přihlášení/odhlášení pro čistě lokální scénář. Detaily roadmapy jsou zachyceny v [`docs/minimal-deployment-plan.md`](minimal-deployment-plan.md).
-- Lokální bootstrap: seedování nyní vytváří výchozího Super Admina (`admin@localhost` / `ChangeMe!123!`, přepisovatelné přes `SeedAdmin:*`) a `/api/auth/login` & `/api/auth/logout` poskytují cookie-based přihlášení/odhlášení pro čistě lokální scénář. Detaily roadmapy jsou zachyceny v [`docs/minimal-deployment-plan.md`](minimal-deployment-plan.md).
+- Lokální bootstrap: seedování nyní vytváří výchozího Super Admina (`admin@localhost` / `ChangeMe!123!`, přepisovatelné přes `SeedAdmin:*`) a `/api/auth/login` & `/api/auth/logout` poskytují cookie-based přihlášení/odhlášení pro čistě lokální scénář. Detaily roadmapy jsou zachyceny v [`docs/minimal-deployment-plan.md`](docs/minimal-deployment-plan.md).
+- Minimal-mode UI: `appsettings.Production.json` aktivuje feature flag `FeatureFlags.MinimalMode` a React build (`.env.production`) schovává nedokončené sekce (Reports/Updates/Observability/Connectors) pro rychlé lokální nasazení pouze s inventářem.
+- Deployment tooling: `scripts/installer.ps1` nyní propisuje seed admin údaje, zakládá databázi, volitelně spouští migrace (`dotnet HWInventory.Api.dll --apply-migrations`) a nastavuje práva složkám `logs`/`updates`.
+- Smoke test: `scripts/smoke-test.ps1` umožňuje rychle ověřit přihlášení, vytvoření serveru/síťového zařízení/pracovní stanice a zápis do auditního logu.
 - Nové integrační testy (`HWInventory.Api.IntegrationTests`) ověřují end-to-end CRUD životní cyklus pro Servery, Síťová zařízení i Workstations přes skutečné HTTP volání včetně přechodů stavů (retire/restore/delete).
 - PowerShell installer scaffold that provisions IIS resources and patches connection strings, alongside documentation describing the remaining backlog and execution plan.
 
@@ -29,7 +31,7 @@ _Last updated: 2025-10-09T12:30:00Z_
 - Rozšířit security UX o pokročilé reportingové widgety na hlavním dashboardu, doplnit e2e/regresní pokrytí pro další scénáře (LDAP sync, SSPR edge cases, captcha rate limiting) a zaintegrovat security metriky do observability pipeline.
 - Complete remaining domain workflows: rozšířit exporty o pokročilé filtry/expiraci odkazů, doplnit reporting & schedules, konektory (SFTP/FTPS, webhooks, storage, printing), advanced backup scénáře (incrementální zálohy, archivace, storage konektory), observability dashboards/alerting, and full audit diff surfacing for additional entities.
 - Dovršit React administraci: doplnit onboarding wizard o zbývající validace, rozšířit inventární tabulky o pokročilé hromadné akce/filtry, doplnit UI pro plánované reporty a štítkové batch scénáře a přidat tiskové fronty s fyzickými cíli.
-- Deliver packaging & ops tooling: doplnit smoke/regression testy, generování release notes/manual PDFs a automatizované publikování artefaktů na release feed.
+- Deliver packaging & ops tooling: doplnit regresní testy nad dalšími scénáři, generování release notes/manual PDFs a automatizované publikování artefaktů na release feed.
 - Gather stakeholder inputs for SMTP, LDAP, SMS, storage, printing, branding, security policies, reporting thresholds, observability, and support contacts to configure environment-specific connectors.
 
 See [`docs/implementation-plan.md`](implementation-plan.md) for the detailed backlog and sequencing guidance.

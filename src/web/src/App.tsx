@@ -22,28 +22,28 @@ import { HelpCenterPage } from './pages/HelpCenterPage';
 import { LoginPage } from './pages/LoginPage';
 import { SessionGuard } from './auth/SessionGuard';
 import { useSession } from './auth/SessionProvider';
-
+import { appConfig } from './config';
 const navItems = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/servers', label: 'Servers' },
-  { to: '/network', label: 'Network' },
-  { to: '/workstations', label: 'Workstations' },
-  { to: '/audit', label: 'Audit' },
-  { to: '/labels', label: 'Labels' },
-  { to: '/settings/security', label: 'Settings' },
-  { to: '/modules', label: 'Modules' },
-  { to: '/help', label: 'Help Center' }
+  { to: '/', label: 'Dashboard', minimal: true },
+  { to: '/servers', label: 'Servers', minimal: true },
+  { to: '/network', label: 'Network', minimal: true },
+  { to: '/workstations', label: 'Workstations', minimal: true },
+  { to: '/audit', label: 'Audit', minimal: true },
+  { to: '/labels', label: 'Labels', minimal: false },
+  { to: '/settings/security', label: 'Settings', minimal: true },
+  { to: '/modules', label: 'Modules', minimal: false },
+  { to: '/help', label: 'Help Center', minimal: false }
 ];
 
 const settingsItems = [
-  { to: 'security', label: 'Security & Auth' },
-  { to: 'email', label: 'Email (SMTP)' },
-  { to: 'connectors', label: 'Konektory' },
-  { to: 'observability', label: 'Observabilita' },
-  { to: 'backup', label: 'Backup & Restore' },
-  { to: 'export', label: 'Import/Export' },
-  { to: 'dictionaries', label: 'Číselníky' },
-  { to: 'updates', label: 'Aktualizace' }
+  { to: 'security', label: 'Security & Auth', minimal: true },
+  { to: 'email', label: 'Email (SMTP)', minimal: false },
+  { to: 'connectors', label: 'Konektory', minimal: false },
+  { to: 'observability', label: 'Observabilita', minimal: false },
+  { to: 'backup', label: 'Backup & Restore', minimal: false },
+  { to: 'export', label: 'Import/Export', minimal: false },
+  { to: 'dictionaries', label: 'Číselníky', minimal: true },
+  { to: 'updates', label: 'Aktualizace', minimal: false }
 ];
 
 const Layout = () => {
@@ -90,10 +90,12 @@ const Layout = () => {
         </div>
         <nav className="bg-slate-50 dark:bg-slate-950">
           <div className="mx-auto flex max-w-6xl flex-wrap gap-3 px-6 py-2 text-sm font-medium">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
+            {navItems
+              .filter((item) => item.minimal || !appConfig.minimalMode)
+              .map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
                 className="rounded px-3 py-1 text-slate-700 transition hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {item.label}
@@ -112,7 +114,9 @@ const Layout = () => {
 const SettingsLayout = () => (
   <div className="space-y-6">
     <nav className="flex flex-wrap gap-3">
-      {settingsItems.map((item) => (
+      {settingsItems
+        .filter((item) => item.minimal || !appConfig.minimalMode)
+        .map((item) => (
         <Link
           key={item.to}
           to={item.to}
@@ -141,17 +145,17 @@ const App = () => (
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="security" replace />} />
           <Route path="security" element={<SecuritySettingsPage />} />
-          <Route path="email" element={<EmailSettingsPage />} />
-          <Route path="connectors" element={<ConnectorsPage />} />
-          <Route path="observability" element={<ObservabilitySettingsPage />} />
-          <Route path="backup" element={<BackupRestorePage />} />
-          <Route path="export" element={<ExportJobsPage />} />
-          <Route path="updates" element={<UpdatesPage />} />
+          {!appConfig.minimalMode && <Route path="email" element={<EmailSettingsPage />} />}
+          {!appConfig.minimalMode && <Route path="connectors" element={<ConnectorsPage />} />}
+          {!appConfig.minimalMode && <Route path="observability" element={<ObservabilitySettingsPage />} />}
+          {!appConfig.minimalMode && <Route path="backup" element={<BackupRestorePage />} />}
+          {!appConfig.minimalMode && <Route path="export" element={<ExportJobsPage />} />}
+          {!appConfig.minimalMode && <Route path="updates" element={<UpdatesPage />} />}
           <Route path="dictionaries" element={<DictionariesPage />} />
           <Route path="*" element={<PlaceholderPage title="Settings" description="Administrative configuration center." />} />
         </Route>
-        <Route path="modules" element={<ModulesPage />} />
-        <Route path="help" element={<HelpCenterPage />} />
+        {!appConfig.minimalMode && <Route path="modules" element={<ModulesPage />} />}
+        {!appConfig.minimalMode && <Route path="help" element={<HelpCenterPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Route>

@@ -45,9 +45,20 @@ The skeleton is intentionally incomplete compared to the full specification. Maj
    cd scripts
    .\installer.ps1 -PublishPath "C:\inetpub\HWInventory" -SiteName "HWInventory" -AppPoolName "HWInventoryPool" -SqlConnectionString "Server=sql01;Database=HWInventory;User Id=hwinv;Password=Secret;TrustServerCertificate=True"
    ```
-   The script updates `appsettings*.json` with the provided SQL Server connection string, provisions/updates the IIS site + app pool (unless `-SkipIisProvisioning` is supplied), and grants modify permissions to the pool identity.
-4. Verify SQL connectivity by running the API locally (`dotnet run`) or starting the IIS site, then execute EF Core migrations (the API performs `DbContext.Database.Migrate()` on startup) and confirm `/health` returns `OK`.
-5. Complete the first-run wizard in the browser to configure SMTP, LDAP/SSPR connectors, and seed the Super Admin account.
+   The script updates `appsettings*.json` with the provided SQL Server connection string **and** seed admin credentials, ensures the database exists, optionally runs migrations via `dotnet HWInventory.Api.dll --apply-migrations`, provisions/updates the IIS site + app pool (unless `-SkipIisProvisioning` is supplied), and grants modify permissions to the pool identity.
+4. Start the IIS site (or run `dotnet HWInventory.Api.dll`) to finish applying EF Core migrations, then confirm `/health` returns `OK`.
+5. Complete the first-run wizard in the browser. In lokálním režimu je možné přeskočit externí konektory a pokračovat pouze s lokálními účty.
+
+### Minimální lokální nasazení (bez konektorů)
+
+Pokud chcete rychle zprovoznit jen inventární moduly **Servers / Network devices / Workstations** na jednom serveru s SQL Serverem, držte se těchto kroků:
+
+1. Publikujte API (`dotnet publish src/api/src/HWInventory.Api/HWInventory.Api.csproj -c Release -o publish`) a vybuilděte React administraci (`cd src/web && npm install && npm run build`). Výchozí konfigurace `src/web/.env.production` nastavuje `VITE_MINIMAL_MODE=true`, takže se v UI zobrazí pouze nezbytné sekce.
+2. Zkopírujte obsah `publish` na cílový server (např. `C:\inetpub\HWInventory`). Ujistěte se, že v adresáři leží `appsettings.Production.json` s ukázkovým connection stringem, které můžete dále upravit.
+3. Spusťte `scripts/installer.ps1` (viz výše) – skript nastaví connection string, inicializačního admina a spustí migrace proti SQL Serveru.
+4. Otevřete aplikaci v prohlížeči, v průvodci zaškrtněte „Pokračovat v lokálním režimu“ a dokončete onboarding bez SMTP/LDAP.
+5. Ověřte funkčnost pomocí smoke testu `scripts/smoke-test.ps1` (parametry `-BaseUrl`, `-UserName`, `-Password`). Skript provede přihlášení, vytvoří ukázkové servery/síťová zařízení/stanice a zkontroluje auditní log.
+6. Po prvním přihlášení změňte heslo výchozího účtu **admin@localhost / ChangeMe!123!**.
 
 ### Update workflow (Settings → Aktualizace)
 

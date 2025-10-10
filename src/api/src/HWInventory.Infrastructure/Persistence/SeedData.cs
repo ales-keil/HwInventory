@@ -71,14 +71,24 @@ public static class SeedData
             }
         }
 
+        var minimalMode = configuration.GetValue<bool>("FeatureFlags:MinimalMode");
+
         if (!await context.FeatureModules.AnyAsync(cancellationToken))
         {
             context.FeatureModules.AddRange(new[]
             {
-                new FeatureModule { Key = "labels", Name = "Labels & Printing", Enabled = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = "seed" },
+                new FeatureModule { Key = "labels", Name = "Labels & Printing", Enabled = !minimalMode, CreatedAtUtc = DateTime.UtcNow, CreatedBy = "seed" },
                 new FeatureModule { Key = "reports", Name = "Reports & Schedules", Enabled = false, CreatedAtUtc = DateTime.UtcNow, CreatedBy = "seed" },
                 new FeatureModule { Key = "zabbix", Name = "Zabbix Metrics", Enabled = false, CreatedAtUtc = DateTime.UtcNow, CreatedBy = "seed" }
             });
+        }
+        else if (minimalMode)
+        {
+            var modules = await context.FeatureModules.ToListAsync(cancellationToken);
+            foreach (var module in modules.Where(m => m.Key == "labels"))
+            {
+                module.Enabled = false;
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);

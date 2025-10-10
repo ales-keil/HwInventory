@@ -77,7 +77,7 @@ This document enumerates the outstanding work required to transform the current 
 
 ## 5. Packaging & Deployment
 - **Installer & builder scripts**
-  - Complete PowerShell installer (installer.ps1) to set up IIS App Pool, file permissions, environment configuration, and health checks.
+  - Complete PowerShell installer (installer.ps1) to set up IIS App Pool, file permissions, environment configuration, and health checks. ✅ _(aktualizováno 2025-10-09: přidáno nastavování SeedAdmin, vytvoření DB, volitelné migrace)_
   - Provide merge/all-in-one builder supporting MERGE/ALLINONE modes with logging, phase detection, regex fixes, wizard verification, and optional installer automation. ✅ _(builder.ps1 delivered 2025-10-09 – zbývá rozšíření installeru a smoke testy)_
 - **CI/CD** ✅ _(baseline workflow delivered 2025-10-09)_
   - Autor GitHub Actions workflows for build, test (API + web), publish artefacts, generate All-in-One ZIP with SHA256 manifest, and smoke tests. _(Remaining: FE lint/test, smoke/regression coverage, release publikace)_
@@ -91,7 +91,7 @@ This document enumerates the outstanding work required to transform the current 
   - Unit, integration, and end-to-end tests covering domain logic, API endpoints, RBAC enforcement, background jobs, printing workflows, import/export, backups, updates.
   - UI tests (Playwright) for key flows including onboarding wizard, settings updates, inventory CRUD, label printing, report scheduling.
 - **Smoke tests**
-  - Scripts verifying /health, login + 2FA, CRUD basics, label rendering, SMTP/LDAP tests post-deployment.
+  - Scripts verifying /health, login + 2FA, CRUD basics, label rendering, SMTP/LDAP tests post-deployment. ✅ _(částčně – `scripts/smoke-test.ps1` pokrývá login + CRUD inventáře + audit; zbývá rozšířit o 2FA/SMTP/LDAP)_
 - **Performance & security**
   - Add rate limiting, CAPTCHA for login/SSPR, vulnerability scanning, dependency checks, and penetration testing considerations.
 
