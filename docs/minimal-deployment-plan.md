@@ -13,7 +13,7 @@ pracovat pouze s lokálními účty a obsluhovat evidence **Servers / Network de
 | 6 | ✅ Hotovo | Provést end-to-end ověření CRUD operací pro Servery/Síťová zařízení/Pracovní stanice – opravit případné chyby v API nebo formulářích. Pokryto integračními testy v `HWInventory.Api.IntegrationTests`. |
 | 7 | ✅ Hotovo | Vyčistit UI od nedokončených modulů – skrýt pokročilé sekce (Reports, Updates, Observability…) za feature flag, aby minimální nasazení působilo konzistentně. |
 | 8 | ✅ Hotovo | Připravit základní smoke test (PowerShell/Postman kolekce) ověřující přihlášení, CRUD operace a audit log. |
-| 9 | ⬜ | Vylepšit `scripts/installer.ps1` tak, aby ve výchozím režimu publikoval pouze API + React build a doplnil inicializační heslo do `appsettings.json`. |
+| 9 | ✅ Hotovo | Vylepšit `scripts/installer.ps1` tak, aby ve výchozím režimu zkopíroval publikované API i React build a bezpečně zanesl inicializační heslo (DPAPI) do `appsettings.json`. |
 | 10 | ⬜ | Dokončit dokumentaci pro provoz – krátký PDF/Markdown návod „Jak nasadit minimální verzi“, checklist před spuštěním a seznam kroků po prvním přihlášení (změna hesla, základní číselníky). |
 
 > Poznámka: Do budoucna lze tyto kroky rozšířit směrem k plné specifikaci (LDAP, SSO, štítky, reporty atd.),

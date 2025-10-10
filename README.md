@@ -39,13 +39,13 @@ The skeleton is intentionally incomplete compared to the full specification. Maj
 ### SQL Server & IIS deployment checklist
 
 1. Publish the API project (`dotnet publish src/api/src/HWInventory.Api/HWInventory.Api.csproj -c Release -o publish`).
-2. Copy the contents of the `publish` folder to the IIS server.
-3. Run `scripts/installer.ps1` with administrator privileges:
+2. Build the React frontend (`cd src/web && npm install && npm run build`) – the artefacts will be placed under `publish/web` when the builder is used.
+3. Run `scripts/installer.ps1` with administrator privileges (the script copies both the API publish output and the React build by default):
    ```powershell
    cd scripts
    .\installer.ps1 -PublishPath "C:\inetpub\HWInventory" -SiteName "HWInventory" -AppPoolName "HWInventoryPool" -SqlConnectionString "Server=sql01;Database=HWInventory;User Id=hwinv;Password=Secret;TrustServerCertificate=True"
    ```
-   The script updates `appsettings*.json` with the provided SQL Server connection string **and** seed admin credentials, ensures the database exists, optionally runs migrations via `dotnet HWInventory.Api.dll --apply-migrations`, provisions/updates the IIS site + app pool (unless `-SkipIisProvisioning` is supplied), and grants modify permissions to the pool identity.
+   The script copies artefacts from `publish/api` and `publish/web`, updates `appsettings*.json` with the provided SQL Server connection string, generates (or uses the supplied) seed admin credentials, protects the password using DPAPI by default, ensures the database exists, optionally runs migrations via `dotnet HWInventory.Api.dll --apply-migrations`, provisions/updates the IIS site + app pool (unless `-SkipIisProvisioning` is supplied), and grants modify permissions to the pool identity. Use `-DisablePasswordEncryption` if you need the password stored in plain text (e.g., for non-Windows hosting) and `-SkipCopy`, `-SkipApiCopy`, or `-SkipWebCopy` to control copying behaviour. Pokud heslo nezadáte, skript vygeneruje náhodné 24znakové heslo, zobrazí jej v konzoli a uloží (šifrovaně) do konfigurace.
 4. Start the IIS site (or run `dotnet HWInventory.Api.dll`) to finish applying EF Core migrations, then confirm `/health` returns `OK`.
 5. Complete the first-run wizard in the browser. In lokálním režimu je možné přeskočit externí konektory a pokračovat pouze s lokálními účty.
 

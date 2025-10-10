@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using HWInventory.Domain.Entities;
 using HWInventory.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
@@ -96,7 +98,24 @@ public static class SeedData
         if (!await userManager.Users.AnyAsync(cancellationToken))
         {
             var adminEmail = configuration["SeedAdmin:Email"] ?? "admin@localhost";
-            var adminPassword = configuration["SeedAdmin:Password"] ?? "ChangeMe!123!";
+            var adminPassword = configuration["SeedAdmin:Password"];
+            var protectedPassword = configuration["SeedAdmin:PasswordProtected"];
+
+            if (string.IsNullOrWhiteSpace(adminPassword) && !string.IsNullOrWhiteSpace(protectedPassword))
+            {
+                try
+                {
+                    var encryptedBytes = Convert.FromBase64String(protectedPassword);
+                    var decrypted = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.LocalMachine);
+                    adminPassword = Encoding.UTF8.GetString(decrypted);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed to decrypt SeedAdmin password. Ensure the installer ran on the same machine or disable encryption.", ex);
+                }
+            }
+
+            adminPassword ??= "ChangeMe!123!";
 
             var adminUser = new AppUser
             {

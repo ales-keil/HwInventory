@@ -5,10 +5,59 @@ param(
     [string]$AppPoolIdentity = "ApplicationPoolIdentity",
     [string]$SqlConnectionString = "Server=localhost;Database=HWInventory;Trusted_Connection=True;TrustServerCertificate=True",
     [string]$SeedAdminEmail = "admin@localhost",
-    [string]$SeedAdminPassword = "ChangeMe!123!",
+    [string]$SeedAdminPassword,
+    [string]$ApiSourcePath,
+    [string]$WebSourcePath,
+    [switch]$SkipCopy,
+    [switch]$SkipApiCopy,
+    [switch]$SkipWebCopy,
+    [switch]$DisablePasswordEncryption,
     [switch]$SkipIisProvisioning,
     [switch]$SkipMigrations
 )
+
+$script:scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+if (-not $ApiSourcePath) {
+    $ApiSourcePath = Join-Path $script:scriptRoot "..\publish\api"
+}
+
+if (-not $WebSourcePath) {
+    $WebSourcePath = Join-Path $script:scriptRoot "..\publish\web"
+}
+
+function Resolve-OptionalPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    try {
+        return (Resolve-Path $Path -ErrorAction Stop).Path
+    }
+    catch {
+        return $Path
+    }
+}
+
+$ApiSourcePath = Resolve-OptionalPath -Path $ApiSourcePath
+$WebSourcePath = Resolve-OptionalPath -Path $WebSourcePath
+
+function New-RandomPassword {
+    param([int]$Length = 20)
+
+    $bytes = New-Object byte[] ($Length)
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $base64 = [Convert]::ToBase64String($bytes)
+    return $base64.Substring(0, $Length)
+}
+
+if (-not $PSBoundParameters.ContainsKey('SeedAdminPassword')) {
+    $SeedAdminPassword = New-RandomPassword -Length 24
+    Write-Host "[HWInventory] Generated random seed admin password: $SeedAdminPassword" -ForegroundColor Yellow
+    Write-Host "[HWInventory] Store this password securely and change it after the first login." -ForegroundColor Yellow
+}
 
 Import-Module WebAdministration -ErrorAction Stop
 
@@ -21,12 +70,80 @@ function Ensure-Directory {
     }
 }
 
+function Clear-DirectoryContents {
+    param(
+        [string]$Path,
+        [string[]]$Exclude = @()
+    )
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    Get-ChildItem -Path $Path -Force | ForEach-Object {
+        if ($Exclude -and $Exclude -contains $_.Name) {
+            return
+        }
+
+        Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Copy-DirectoryContents {
+    param(
+        [string]$Source,
+        [string]$Destination,
+        [string]$Description
+    )
+
+    if (-not (Test-Path $Source)) {
+        Write-Warning "[HWInventory] Skipping copy for $Description – source path $Source was not found."
+        return $false
+    }
+
+    Ensure-Directory -Path $Destination
+    $exclusions = @()
+    if ($Description -eq "API") {
+        $exclusions = @('logs', 'updates')
+    }
+
+    Clear-DirectoryContents -Path $Destination -Exclude $exclusions
+
+    Get-ChildItem -Path $Source -Force | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $Destination -Recurse -Force
+    }
+
+    Write-Host "[HWInventory] Copied $Description artefacts from $Source to $Destination" -ForegroundColor Green
+    return $true
+}
+
+function Protect-SeedAdminPassword {
+    param([string]$Password)
+
+    $isWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+    if (-not $isWindows) {
+        Write-Warning "[HWInventory] Password encryption is only available on Windows. Storing password in plain text."
+        return $null
+    }
+
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Password)
+        $protected = [System.Security.Cryptography.ProtectedData]::Protect($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine)
+        return [Convert]::ToBase64String($protected)
+    }
+    catch {
+        Write-Warning "[HWInventory] Failed to protect seed admin password: $($_.Exception.Message). Falling back to plain text."
+        return $null
+    }
+}
+
 function Update-AppSettings {
     param(
         [string]$ConfigPath,
         [string]$ConnectionString,
         [string]$AdminEmail,
-        [string]$AdminPassword
+        [string]$AdminPassword,
+        [switch]$EncryptPassword
     )
 
     $json = Get-Content $ConfigPath -Raw | ConvertFrom-Json
@@ -41,7 +158,21 @@ function Update-AppSettings {
     }
 
     $json.SeedAdmin.Email = $AdminEmail
-    $json.SeedAdmin.Password = $AdminPassword
+
+    $json.SeedAdmin.PSObject.Properties.Remove('PasswordProtected') | Out-Null
+    $json.SeedAdmin.PSObject.Properties.Remove('Password') | Out-Null
+
+    $protected = $null
+    if ($EncryptPassword) {
+        $protected = Protect-SeedAdminPassword -Password $AdminPassword
+    }
+
+    if ($protected) {
+        $json.SeedAdmin | Add-Member -NotePropertyName PasswordProtected -NotePropertyValue $protected
+    }
+    else {
+        $json.SeedAdmin | Add-Member -NotePropertyName Password -NotePropertyValue $AdminPassword
+    }
 
     if (-not $json.FeatureFlags) {
         $json | Add-Member -NotePropertyName FeatureFlags -NotePropertyValue @{ }
@@ -115,6 +246,18 @@ function Invoke-Migrations {
 }
 
 Ensure-Directory -Path $PublishPath
+
+if (-not $SkipCopy) {
+    if (-not $SkipApiCopy) {
+        Copy-DirectoryContents -Source $ApiSourcePath -Destination $PublishPath -Description "API"
+    }
+
+    if (-not $SkipWebCopy) {
+        $webTarget = Join-Path $PublishPath "web"
+        Copy-DirectoryContents -Source $WebSourcePath -Destination $webTarget -Description "React build"
+    }
+}
+
 Ensure-Directory -Path (Join-Path $PublishPath "logs")
 Ensure-Directory -Path (Join-Path $PublishPath "updates")
 
@@ -124,7 +267,8 @@ if (-not (Test-Path $webConfigPath)) {
 }
 
 if (Test-Path $webConfigPath) {
-    Update-AppSettings -ConfigPath $webConfigPath -ConnectionString $SqlConnectionString -AdminEmail $SeedAdminEmail -AdminPassword $SeedAdminPassword
+    $encryptPassword = -not $DisablePasswordEncryption
+    Update-AppSettings -ConfigPath $webConfigPath -ConnectionString $SqlConnectionString -AdminEmail $SeedAdminEmail -AdminPassword $SeedAdminPassword -EncryptPassword:$encryptPassword
     Ensure-SqlDatabase -ConnectionString $SqlConnectionString
     if (-not $SkipMigrations) {
         Invoke-Migrations -PublishPath $PublishPath
