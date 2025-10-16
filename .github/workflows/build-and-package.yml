@@ -1,0 +1,68 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/api/HWInventory.sln
+
+      - name: Build
+        run: dotnet build src/api/HWInventory.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test src/api/HWInventory.sln --configuration Release --no-build --verbosity normal
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install web dependencies
+        working-directory: src/web
+        run: npm install
+
+      - name: Build web assets
+        working-directory: src/web
+        run: npm run build --if-present
+
+      - name: Publish API
+        run: dotnet publish src/api/src/HWInventory.Api/HWInventory.Api.csproj --configuration Release --output publish/api
+
+      - name: Archive web
+        run: |
+          mkdir -p publish/web
+          cp -R src/web/dist publish/web/
+
+      - name: Package All-in-One zip
+        run: |
+          mkdir -p artifacts
+          Compress-Archive -Path publish/* -DestinationPath artifacts/HWInventory_AllInOne_${{ github.run_number }}.zip -Force
+        shell: pwsh
+
+      - name: Generate SHA256
+        run: |
+          Get-FileHash artifacts/HWInventory_AllInOne_${{ github.run_number }}.zip -Algorithm SHA256 | ForEach-Object {
+            $_.Hash | Out-File artifacts/HWInventory_AllInOne_${{ github.run_number }}.sha256 -Encoding ascii
+          }
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hw-inventory-aio
+          path: artifacts/
