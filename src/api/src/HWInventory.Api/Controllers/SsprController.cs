@@ -1,4 +1,5 @@
 using System.Threading;
+using HWInventory.Api.Models;
 using HWInventory.Application.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,11 +19,17 @@ public class SsprController : ControllerBase
     }
 
     [HttpPost("request")]
-    public async Task<ActionResult<PasswordResetRequestResult>> RequestAsync([FromBody] PasswordResetRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<PasswordResetRequestResult>> RequestAsync([FromBody] PasswordResetRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await _ssprService.RequestResetAsync(request, cancellationToken);
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var result = await _ssprService.RequestResetAsync(request.ToModel(clientIp, userAgent), cancellationToken);
         if (!result.Success)
         {
+            if (result.RetryAfterSeconds.HasValue)
+            {
+                Response.Headers.RetryAfter = result.RetryAfterSeconds.Value.ToString();
+            }
             return BadRequest(result);
         }
 
@@ -30,9 +37,9 @@ public class SsprController : ControllerBase
     }
 
     [HttpPost("complete")]
-    public async Task<ActionResult<PasswordResetCompletionResult>> CompleteAsync([FromBody] PasswordResetCompletionRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<PasswordResetCompletionResult>> CompleteAsync([FromBody] PasswordResetCompletionRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await _ssprService.CompleteResetAsync(request, cancellationToken);
+        var result = await _ssprService.CompleteResetAsync(request.ToModel(), cancellationToken);
         if (!result.Success)
         {
             return BadRequest(result);

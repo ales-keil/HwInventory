@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text.Json;
@@ -170,6 +171,21 @@ public class EmailConnectorStore : IEmailConnectorStore
                 message.ReplyToList.Add(new MailAddress(replyTo));
             }
 
+            if (request.Attachments is { Count: > 0 })
+            {
+                foreach (var attachment in request.Attachments)
+                {
+                    if (attachment?.Content is null || attachment.Content.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var stream = new MemoryStream(attachment.Content);
+                    var mailAttachment = new Attachment(stream, attachment.FileName, attachment.ContentType);
+                    message.Attachments.Add(mailAttachment);
+                }
+            }
+
             await smtp.SendMailAsync(message);
 #pragma warning restore SYSLIB0014
 
@@ -264,6 +280,21 @@ public class EmailConnectorStore : IEmailConnectorStore
             if (configuration.TryGetValue("replyToAddress", out var replyTo) && !string.IsNullOrWhiteSpace(replyTo))
             {
                 message.ReplyToList.Add(new MailAddress(replyTo));
+            }
+
+            if (request.Attachments is { Count: > 0 })
+            {
+                foreach (var attachment in request.Attachments)
+                {
+                    if (attachment?.Content is null || attachment.Content.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var stream = new MemoryStream(attachment.Content);
+                    var mailAttachment = new Attachment(stream, attachment.FileName, attachment.ContentType);
+                    message.Attachments.Add(mailAttachment);
+                }
             }
 
             await smtp.SendMailAsync(message);

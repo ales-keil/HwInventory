@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HWInventory.Application.Abstractions;
@@ -21,6 +20,10 @@ public class ReportService : IReportService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<ReportService> _logger;
     private readonly IEmailConnectorStore _emailConnectorStore;
+
+    private const string DefaultSubjectTemplate = "HW Inventory – report {ReportName}";
+    private const string DefaultBodyTemplate = "Report '{ReportName}' ({Scope}) byl {StatusText} v {CompletedAt}." +
+        "\n\nSoubor: {ArtifactPath}\nDetaily: {ReportUrl}";
 
     public ReportService(
         IAppDbContext dbContext,
@@ -51,6 +54,10 @@ public class ReportService : IReportService
             FilterJson = request.FilterJson,
             Recipients = NormalizeRecipients(request.Recipients),
             StoragePath = Path.GetFullPath(request.StoragePath),
+            EmailSubjectTemplate = NormalizeSubjectTemplate(request.EmailSubjectTemplate),
+            EmailBodyTemplate = NormalizeBodyTemplate(request.EmailBodyTemplate),
+            NotifyOnFailureOnly = request.NotifyOnFailureOnly,
+            IncludeArtifactInEmail = request.IncludeArtifactInEmail,
             RunAtTime = request.RunAtTime,
             RunOnDayOfWeek = request.RunOnDayOfWeek,
             RunOnDayOfMonth = request.RunOnDayOfMonth,
@@ -84,6 +91,10 @@ public class ReportService : IReportService
         definition.FilterJson = request.FilterJson;
         definition.Recipients = NormalizeRecipients(request.Recipients);
         definition.StoragePath = Path.GetFullPath(request.StoragePath);
+        definition.EmailSubjectTemplate = NormalizeSubjectTemplate(request.EmailSubjectTemplate);
+        definition.EmailBodyTemplate = NormalizeBodyTemplate(request.EmailBodyTemplate);
+        definition.NotifyOnFailureOnly = request.NotifyOnFailureOnly;
+        definition.IncludeArtifactInEmail = request.IncludeArtifactInEmail;
         definition.RunAtTime = request.RunAtTime;
         definition.RunOnDayOfWeek = request.RunOnDayOfWeek;
         definition.RunOnDayOfMonth = request.RunOnDayOfMonth;
@@ -476,9 +487,93 @@ public class ReportService : IReportService
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
+    private static string NormalizeSubjectTemplate(string? template)
+        => string.IsNullOrWhiteSpace(template) ? DefaultSubjectTemplate : template.Trim();
+
+    private static string NormalizeBodyTemplate(string? template)
+        => string.IsNullOrWhiteSpace(template) ? DefaultBodyTemplate : template.Trim();
+
+    private static Dictionary<string, string> BuildTemplateTokens(ReportDefinition definition, ReportRun run)
+    {
+        var completedAt = run.CompletedAtUtc ?? run.StartedAtUtc;
+        var statusText = run.Status switch
+        {
+            ReportRunStatus.Completed => "dokončen",
+            ReportRunStatus.Failed => "selhal",
+            _ => run.Status.ToString()
+        };
+
+        var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ReportName"] = definition.Name,
+            ["Scope"] = definition.Scope.ToString(),
+            ["Format"] = definition.Format.ToString(),
+            ["Status"] = run.Status.ToString(),
+            ["StatusText"] = statusText,
+            ["RunId"] = run.Id.ToString(),
+            ["StartedAt"] = run.StartedAtUtc.ToString("u", CultureInfo.InvariantCulture),
+            ["CompletedAt"] = completedAt.ToString("u", CultureInfo.InvariantCulture),
+            ["ArtifactPath"] = run.ArtifactPath ?? string.Empty,
+            ["StoragePath"] = definition.StoragePath ?? string.Empty,
+            ["ReportUrl"] = "/app/reports",
+            ["Recipients"] = definition.Recipients ?? string.Empty
+        };
+
+        if (!string.IsNullOrWhiteSpace(run.FailureReason))
+        {
+            tokens["FailureReason"] = run.FailureReason!;
+        }
+
+        return tokens;
+    }
+
+    private static string ApplyTemplate(string? template, IReadOnlyDictionary<string, string> tokens, string fallback)
+    {
+        var value = string.IsNullOrWhiteSpace(template) ? fallback : template!;
+        foreach (var token in tokens)
+        {
+            value = value.Replace($"{{{token.Key}}}", token.Value ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return value;
+    }
+
+    private static string? ResolveArtifactPath(string? artifactPath, string? storagePath)
+    {
+        if (string.IsNullOrWhiteSpace(artifactPath))
+        {
+            return null;
+        }
+
+        var fullPath = Path.IsPathRooted(artifactPath)
+            ? artifactPath
+            : (string.IsNullOrWhiteSpace(storagePath)
+                ? artifactPath
+                : Path.Combine(storagePath, artifactPath));
+
+        return File.Exists(fullPath) ? fullPath : (File.Exists(artifactPath) ? artifactPath : null);
+    }
+
+    private static string ResolveContentType(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension switch
+        {
+            ".csv" => "text/csv",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".pdf" => "application/pdf",
+            _ => "application/octet-stream"
+        };
+    }
+
     private async Task NotifySubscribersAsync(ReportDefinition definition, ReportRun run, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(definition.Recipients))
+        {
+            return;
+        }
+
+        if (definition.NotifyOnFailureOnly && run.Status != ReportRunStatus.Failed)
         {
             return;
         }
@@ -493,34 +588,38 @@ public class ReportService : IReportService
             return;
         }
 
-        var statusText = run.Status == ReportRunStatus.Completed
-            ? "dokončen"
-            : run.Status == ReportRunStatus.Failed
-                ? "selhal"
-                : run.Status.ToString();
+        var tokens = BuildTemplateTokens(definition, run);
+        var subject = ApplyTemplate(definition.EmailSubjectTemplate, tokens, DefaultSubjectTemplate);
+        var body = ApplyTemplate(definition.EmailBodyTemplate, tokens, DefaultBodyTemplate);
 
-        var builder = new StringBuilder();
-        builder.AppendLine($"Report '{definition.Name}' ({definition.Scope}) byl {statusText} v {DateTimeOffset.UtcNow:u}.");
-
-        if (run.Status == ReportRunStatus.Completed && !string.IsNullOrWhiteSpace(run.ArtifactPath))
+        IReadOnlyCollection<EmailAttachment>? attachments = null;
+        if (definition.IncludeArtifactInEmail && run.Status == ReportRunStatus.Completed && !string.IsNullOrWhiteSpace(run.ArtifactPath))
         {
-            builder.AppendLine($"Soubor je uložen na: {run.ArtifactPath}");
+            var artifactPath = ResolveArtifactPath(run.ArtifactPath, definition.StoragePath);
+            if (artifactPath is not null)
+            {
+                try
+                {
+                    var bytes = await File.ReadAllBytesAsync(artifactPath, cancellationToken);
+                    attachments = new[]
+                    {
+                        new EmailAttachment(Path.GetFileName(artifactPath), bytes, ResolveContentType(artifactPath))
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Nelze načíst artefakt reportu {Artifact} pro přílohu e-mailu", artifactPath);
+                }
+            }
         }
-
-        if (run.Status == ReportRunStatus.Failed && !string.IsNullOrWhiteSpace(run.FailureReason))
-        {
-            builder.AppendLine($"Důvod selhání: {run.FailureReason}");
-        }
-
-        builder.AppendLine();
-        builder.AppendLine("Pro detailní přehled otevřete HW Inventory a přejděte do sekce Reporty.");
 
         var result = await _emailConnectorStore.SendNotificationAsync(
             new EmailNotificationRequest(
                 recipients,
-                $"HW Inventory – report {definition.Name}",
-                builder.ToString(),
-                false),
+                subject,
+                body,
+                false,
+                attachments),
             cancellationToken);
 
         if (!result.Success)
@@ -585,6 +684,10 @@ public class ReportService : IReportService
             definition.FilterJson,
             definition.Recipients,
             definition.StoragePath ?? string.Empty,
+            definition.EmailSubjectTemplate,
+            definition.EmailBodyTemplate,
+            definition.NotifyOnFailureOnly,
+            definition.IncludeArtifactInEmail,
             definition.RunAtTime,
             definition.RunOnDayOfWeek,
             definition.RunOnDayOfMonth,

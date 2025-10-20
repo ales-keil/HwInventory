@@ -11,9 +11,11 @@ public record PasswordResetRequest(
     string CaptchaToken,
     string DeliveryMethod,
     string? DeliveryDestination,
-    bool RequireSmsOtp);
+    bool RequireSmsOtp,
+    string? ClientIp = null,
+    string? UserAgent = null);
 
-public record PasswordResetRequestResult(bool Success, string Message, Guid? Token, bool SmsOtpIssued);
+public record PasswordResetRequestResult(bool Success, string Message, Guid? Token, bool RequiresSms, int? RetryAfterSeconds = null);
 
 public record PasswordResetCompletionRequest(
     Guid Token,

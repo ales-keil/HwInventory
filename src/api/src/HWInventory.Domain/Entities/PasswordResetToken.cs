@@ -14,4 +14,6 @@ public class PasswordResetToken : AuditableEntity
     public string? SmsCodeHash { get; set; }
     public bool RequiresSmsVerification { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string? ClientIp { get; set; }
+    public string? UserAgent { get; set; }
 }

@@ -22,6 +22,10 @@ interface ReportFormState {
   filterJson?: string;
   recipients?: string;
   storagePath: string;
+  emailSubjectTemplate: string;
+  emailBodyTemplate: string;
+  notifyOnFailureOnly: boolean;
+  includeArtifactInEmail: boolean;
   runAtTime?: string;
   runOnDayOfWeek?: number;
   runOnDayOfMonth?: number;
@@ -29,6 +33,8 @@ interface ReportFormState {
 }
 
 const defaultStoragePath = 'C:/inetpub/wwwroot/hwinventory/reports';
+const defaultSubjectTemplate = 'HW Inventory – report {ReportName}';
+const defaultBodyTemplate = "Report '{ReportName}' ({Scope}) byl {StatusText} v {CompletedAt}.\n\nSoubor: {ArtifactPath}\nDetaily: {ReportUrl}";
 
 const defaultForm: ReportFormState = {
   name: '',
@@ -39,6 +45,10 @@ const defaultForm: ReportFormState = {
   filterJson: '',
   recipients: '',
   storagePath: defaultStoragePath,
+  emailSubjectTemplate: defaultSubjectTemplate,
+  emailBodyTemplate: defaultBodyTemplate,
+  notifyOnFailureOnly: false,
+  includeArtifactInEmail: false,
   runAtTime: '06:00:00',
   runOnDayOfWeek: 1,
   runOnDayOfMonth: 1,
@@ -114,6 +124,10 @@ export const ReportsPage = () => {
       filterJson: report.filterJson ?? '',
       recipients: report.recipients ?? '',
       storagePath: report.storagePath,
+      emailSubjectTemplate: report.emailSubjectTemplate ?? defaultSubjectTemplate,
+      emailBodyTemplate: report.emailBodyTemplate ?? defaultBodyTemplate,
+      notifyOnFailureOnly: report.notifyOnFailureOnly,
+      includeArtifactInEmail: report.includeArtifactInEmail,
       runAtTime: report.runAtTime ?? '06:00:00',
       runOnDayOfWeek: report.runOnDayOfWeek ?? 1,
       runOnDayOfMonth: report.runOnDayOfMonth ?? 1,
@@ -142,6 +156,10 @@ export const ReportsPage = () => {
         filterJson: form.filterJson,
         recipients: form.recipients,
         storagePath: form.storagePath,
+        emailSubjectTemplate: form.emailSubjectTemplate,
+        emailBodyTemplate: form.emailBodyTemplate,
+        notifyOnFailureOnly: form.notifyOnFailureOnly,
+        includeArtifactInEmail: form.includeArtifactInEmail,
         runAtTime: parseTime(form.runAtTime),
         runOnDayOfWeek: form.runOnDayOfWeek,
         runOnDayOfMonth: form.runOnDayOfMonth,
@@ -340,6 +358,53 @@ export const ReportsPage = () => {
               placeholder="user@example.com;helpdesk@example.com"
               className="mt-1 w-full rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Předmět e-mailu</label>
+            <input
+              name="emailSubjectTemplate"
+              value={form.emailSubjectTemplate}
+              onChange={handleInputChange}
+              className="mt-1 w-full rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Dostupné proměnné: {'{ReportName}'}, {'{Scope}'}, {'{StatusText}'}, {'{CompletedAt}'}, {'{ArtifactPath}'}, {'{ReportUrl}' }.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tělo e-mailu</label>
+            <textarea
+              name="emailBodyTemplate"
+              value={form.emailBodyTemplate}
+              onChange={handleInputChange}
+              rows={5}
+              className="mt-1 w-full rounded border border-slate-300 p-2 text-xs font-mono dark:border-slate-700 dark:bg-slate-800"
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Nahrazeny budou stejné proměnné jako v předmětu, navíc {'{FailureReason}'} pro selhání.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                name="notifyOnFailureOnly"
+                checked={form.notifyOnFailureOnly}
+                onChange={handleInputChange}
+                className="h-4 w-4"
+              />
+              Posílat notifikace pouze při selhání reportu
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                name="includeArtifactInEmail"
+                checked={form.includeArtifactInEmail}
+                onChange={handleInputChange}
+                className="h-4 w-4"
+              />
+              Přiložit vygenerovaný soubor k e-mailu (pokud existuje)
+            </label>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Filtr (JSON)</label>

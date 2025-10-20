@@ -1,6 +1,6 @@
 # HW Inventory Platform – Current Status
 
-_Last updated: 2025-10-16T13:05:00Z_
+_Last updated: 2025-10-20T15:07Z_
 
 ## Implemented Capabilities
 - Monorepo scaffold targeting .NET 8 (API) and React/Vite (admin UI shell) with Tailwind-based dark/light theming.
@@ -9,6 +9,7 @@ _Last updated: 2025-10-16T13:05:00Z_
 - Security integrations covering LDAP/AD connection tests and dry-runs, configurable OpenID Connect sign-in (HTTPS/PKCE enforced), password policy management with history/lockout enforcement, CAPTCHA validation, SMS-backed SSPR flows that revoke active sessions, auditované změny OIDC konfigurace i datových scopů a middleware, který sleduje aktivní relace uživatelů včetně vzdálených odhlášení, společně s React stránkou „Security Settings“ pro správu OIDC/LDAP/SSPR/CAPTCHA/SMS/politik hesel, mapování AD skupin na role, náhled auditních diffů a přehled aktivních relací s možností odhlášení.
 - Security readiness summary API (`/api/security/summary`) a UI přehled, který vizualizuje stav OIDC/LDAP/SSPR/CAPTCHA/SMS/hesel, 2FA adopci a poslední změny, včetně napojení na průvodce prvním spuštěním (blokace „Pokračovat“, dokud nejsou splněny kritické požadavky).
 - Password history storage a reuse prevention (EF Core tabulka `PasswordHistoryEntries`, vlastní `AppUserManager`, `PasswordHistoryValidator`) doplněné o automatizované regresní testy (`HWInventory.Infrastructure.Tests`) pokrývající historii hesel a konfigurátor politik.
+- SSPR throttling: konfigurace ukládá IP/UA metadata, služba `SsprService` aplikuje per-user i per-IP rate limiting podle nastavitelných oken a vrací `Retry-After`; integrační test pokrývá SMS větev i blokaci nad limit.
 - Security alerting a metriky: plánovaný Quartz job `SecurityMetricsSnapshotJob`, perzistence `SecurityMetricSnapshots`, konfigurovatelné prahy s e-mailovými notifikacemi přes SMTP konektor, REST API `/api/security/alerts|metrics/*` a React UI s formulářem prahů, historií snapshotů a trendem adopce 2FA.
 - SMTP konektor s uložením tajemství, auditovanými změnami konfigurace, testovacím odesláním e-mailu a dedikovanou React stránkou „Email (SMTP)“, která zajišťuje úpravu host/port/TLS/přihlašovacích údajů, zobrazuje zdravotní stav a podporuje testování přímo z UI i průvodce prvním spuštěním.
 - Katalog konektorů s REST API a React stránkou „Konektory“ zobrazující stav SMTP/SMS/LDAP/OIDC, podporující přepínání, testy (SMTP/SMS) a rotaci tajemství s auditními záznamy.
@@ -20,7 +21,7 @@ _Last updated: 2025-10-16T13:05:00Z_
 - Maintenance modul „Backup & Restore“ s API `/api/maintenance/*`, Quartz úlohou `BackupJobProcessor`, šifrovanými ZIP archivy (AES-256), SMTP notifikacemi, auditovanými konfiguracemi plánu záloh a React stránkou „Backup & Restore“ v nastavení.
 - Modul „Import/Export“ s API `/api/exports/*` a `/api/imports/*`, službami `ExportService` a `ImportService`, Quartz procesory exportních i importních jobů, CSV/XLSX zpracováním inventáře, validacemi konfliktů, mapováním sloupců, dry-run režimem, auditovanými výsledky a React stránkou „Import/Export“ pro kompletní správu fronty.
 - Exportní artefakty sledují počet stažení a poslední stažení; REST endpoint `/api/exports/{id}/artifact` nyní uplatňuje expiraci, zvyšuje čítač, zapisuje audit a UI zobrazuje download metriku a stav expirování.
-- Modul „Reporty & Schedules“ s API `/api/reports`, aplikací `ReportService`, Quartz úlohou `ReportJobProcessor`, CSV generováním inventárních výstupů (Servery/Network/Workstations/Audit), historií běhů, ručním spouštěním, e-mailovými notifikacemi po dokončení běhu a React stránkou „Reporty & Plánování“ (formulář pro definice, tabulka běhů, stahování artefaktů).
+- Modul „Reporty & Schedules“ s API `/api/reports`, aplikací `ReportService`, Quartz úlohou `ReportJobProcessor`, CSV generováním inventárních výstupů (Servery/Network/Workstations/Audit), historií běhů, ručním spouštěním, e-mailovými notifikacemi po dokončení běhu, konfigurovatelnými šablonami předmětu/těla (tokeny {ReportName}, {StatusText}, {CompletedAt}, {FailureReason}) a volitelným přiložením artefaktu, plus React stránkou „Reporty & Plánování“ (formulář pro definice, tabulka běhů, stahování artefaktů).
 - Help Center & Manuals: dedikovaná React stránka „Help Center“ s indexem kapitol, inline prohlížečem manuálu a statickým API `/docs/manual/*.html`, napojená na kontextové odkazy v nastavení a onboarding wizardu.
 - Kontekstové nápovědy: klíčové stránky inventáře a nastavení (bezpečnost, SMTP, import/export, zálohy) nyní obsahují tlačítka „Nápověda“, která otevírají odpovídající kapitoly manuálu.
 - GitHub Actions pipeline (`.github/workflows/build-and-package.yml`) provádějící build/test API, build FE, tvorbu publish artefaktů a AIO ZIP se SHA256 checksumem a nově i automatický běh PowerShell smoke testu nad publikovanou aplikací; PowerShell builder (`scripts/builder.ps1`) pro lokální MERGE/ALLINONE režimy.
@@ -44,8 +45,8 @@ _Last updated: 2025-10-16T13:05:00Z_
 - Observability rozšířeno o bezpečnostní metriky – `/metrics` nyní publikuje počty uživatelů, 2FA adopci, uzamčené účty, aktivní relace a čekající reset hesel; dashboard tyto ukazatele vizualizuje v nové sekci bezpečnostních widgetů.
 
 ## Outstanding Work (High-Level)
-- Rozšířit security UX o pokročilé governance (homepage widgety, napojení alertů na SIEM/on-call, hlubší regresní testy pro LDAP synchronizace a SSPR rate limiting – aktuálně pokryta konfigurace, SSPR a CAPTCHA).
-- Complete remaining domain workflows: rozšířit exporty o pokročilé filtry a vícekrokové notifikace (nad rámec základních e-mailů), rozšířit reporting o šablony/notifikace/archivaci artefaktů, konektory (napojení tiskových cílů a fyzických spoolerů), advanced backup scénáře (incrementální zálohy, archivace, storage konektory), observability dashboards/alerting, and full audit diff surfacing for additional entities.
+- Rozšířit security UX o pokročilé governance (homepage widgety, napojení alertů na SIEM/on-call, hlubší regresní testy pro LDAP synchronizace a SSPR edge cases – aktuálně pokryta konfigurace, CAPTCHA a throttling).
+- Complete remaining domain workflows: rozšířit exporty o pokročilé filtry a vícekrokové notifikace (nad rámec základních e-mailů), rozšířit reporting o hlubší filtrační scénáře a dlouhodobou archivaci běhů, konektory (napojení tiskových cílů a fyzických spoolerů), advanced backup scénáře (incrementální zálohy, archivace, storage konektory), observability dashboards/alerting, and full audit diff surfacing for additional entities.
 - Dovršit React administraci: doplnit onboarding wizard o zbývající validace, rozšířit UI pro plánované reporty a štítkové batch scénáře, přidat tiskové fronty s fyzickými cíli a dořešit help center pro kontextové nápovědy.
 - Deliver packaging & ops tooling: doplnit regresní testy nad dalšími scénáři, generování release notes/manual PDFs a automatizované publikování artefaktů na release feed.
 - Gather stakeholder inputs for SMTP, LDAP, SMS, storage, printing, branding, security policies, reporting thresholds, observability, and support contacts to configure environment-specific connectors.

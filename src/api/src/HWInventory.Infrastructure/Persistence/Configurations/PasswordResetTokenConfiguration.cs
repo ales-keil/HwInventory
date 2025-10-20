@@ -15,7 +15,11 @@ public class PasswordResetTokenConfiguration : IEntityTypeConfiguration<Password
         builder.Property(x => x.Status).HasMaxLength(50).IsRequired();
         builder.Property(x => x.SmsCodeHash).HasMaxLength(256);
         builder.Property(x => x.IdentityToken).HasMaxLength(2048).IsRequired();
+        builder.Property(x => x.ClientIp).HasMaxLength(64);
+        builder.Property(x => x.UserAgent).HasMaxLength(512);
         builder.Property(x => x.CreatedBy).HasMaxLength(200);
         builder.Property(x => x.ModifiedBy).HasMaxLength(200);
+        builder.HasIndex(x => new { x.AppUserId, x.CreatedAtUtc });
+        builder.HasIndex(x => new { x.ClientIp, x.CreatedAtUtc });
     }
 }

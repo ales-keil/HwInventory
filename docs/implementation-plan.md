@@ -25,8 +25,9 @@ This document enumerates the outstanding work required to transform the current 
 - **Two-factor authentication (2FA)**
   - Provide TOTP (OtpNet) and e-mail OTP methods with enforced enrollment for Super Admin.
   - Implement per-role/group policy enforcement, overrides, reset flows, backup codes, and audit trails.
-- **Self-service password reset (SSPR)**
-  - Build secure token issuance with optional SMS OTP via the SMS connector, CAPTCHA enforcement, rate limiting, and audit logging.
+- **Self-service password reset (SSPR)** ✅ _(rate limiting delivered 2025-10-16)_
+  - Implemented: token issuance s CAPTCHA validací, volitelné SMS OTP, auditování žádostí, per-user/per-IP throttling s `Retry-After` a ukládáním IP/User-Agent.
+  - Remaining: integrace s SIEM alerty, širší regresní pokrytí LDAP edge cases a uživatelská samoobsluha pro nastavení SMS kanálu.
 - **Session management**
   - Expose active sessions, remote logout, automatic invalidation after password changes, and inactivity timeouts.
 - **RBAC policies**
@@ -46,8 +47,8 @@ This document enumerates the outstanding work required to transform the current 
   - Build full CRUD with import/export (CSV/XLSX), duplicate detection, referential integrity, VLAN metadata requirements, and audit.
 - **Audit logging**
   - Persist JSON diffs for all entity operations, support filtering (entity, user, action, timeframe), highlight deletes/restores, and include export functionality that logs access.
-- **Reports & schedules** ✅ _(baseline delivered 2025-10-10)_
-  - Implementováno: REST API `/api/reports`, `ReportService` s perzistentními definicemi, Quartz úloha `ReportJobProcessor`, CSV generování pro Servery/Network/Workstations/Audit, historie běhů, ruční spuštění a React stránka „Reporty & Plánování“.
+- **Reports & schedules** ✅ _(baseline delivered 2025-10-10, templating update 2025-10-16)_
+  - Implementováno: REST API `/api/reports`, `ReportService` s perzistentními definicemi, Quartz úloha `ReportJobProcessor`, CSV generování pro Servery/Network/Workstations/Audit, historie běhů, ruční spuštění, konfigurovatelné šablony předmětu/těla e-mailů s tokeny a volitelné přiložení artefaktů a React stránka „Reporty & Plánování“.
   - Zbývá: doplnit pokročilé filtry/šablony, XLSX/PDF výstupy, deduplikaci a multi-kanálové notifikace, archivaci artefaktů, SLA/alerting a reportingové dashboardy.
 - **Import/Export jobs** ✅ _(baseline completed 2025-10-09)_
   - Implementováno: CSV/XLSX ingest, mapování sloupců, konfliktní strategie (skip/update/create), dry-run, auditované souhrny, e-mail notifikace, perzistence výsledků, React UI pro správu fronty a Quartz joby pro import/export.

@@ -41,6 +41,7 @@ public class SsprServiceTests
             new StubCaptchaValidator(false),
             new StubSmsGateway(),
             new StubSessionTracker(),
+            new StubSsprConfigurationStore(),
             NullLogger<SsprService>.Instance);
 
         var result = await service.RequestResetAsync(new PasswordResetRequest("alice", "invalid", "Email", null, false), CancellationToken.None);
@@ -68,15 +69,17 @@ public class SsprServiceTests
         await dbContext.SaveChangesAsync();
 
         var smsGateway = new StubSmsGateway();
+        var configStore = new StubSsprConfigurationStore() { Model = new SsprConfigurationModel(true, false, true, true, 30, 15, 3, "sms") };
         var service = new SsprService(
             userManager,
             dbContext,
             new StubCaptchaValidator(true),
             smsGateway,
             new StubSessionTracker(),
+            configStore,
             NullLogger<SsprService>.Instance);
 
-        var result = await service.RequestResetAsync(new PasswordResetRequest("bob", "token", "Email", "+420123456789", true), CancellationToken.None);
+        var result = await service.RequestResetAsync(new PasswordResetRequest("bob", "token", "Email", "+420123456789", true, "127.0.0.1", "tests"), CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.True(result.RequiresSms);
@@ -86,6 +89,15 @@ public class SsprServiceTests
         var storedToken = await dbContext.PasswordResetTokens.SingleAsync();
         Assert.Equal(PasswordResetStatus.Pending, storedToken.Status);
         Assert.NotNull(storedToken.SmsCodeHash);
+        Assert.Equal("127.0.0.1", storedToken.ClientIp);
+        Assert.Equal("tests", storedToken.UserAgent);
+
+        // Verify throttling threshold uses configured window
+        configStore.Model = configStore.Model with { MaxRequestsPerWindow = 1 };
+        var throttled = await service.RequestResetAsync(new PasswordResetRequest("bob", "token", "Email", "+420123456789", true, "127.0.0.1", "tests"), CancellationToken.None);
+        Assert.False(throttled.Success);
+        Assert.NotNull(throttled.RetryAfterSeconds);
+        Assert.InRange(throttled.RetryAfterSeconds!.Value, 1, 15 * 60);
     }
 
     private static (AppDbContext dbContext, UserManager<AppUser> userManager) CreateIdentityContext()
@@ -136,5 +148,27 @@ public class SsprServiceTests
     private sealed class StubSessionTracker : ISessionTracker
     {
         public Task RevokeAllAsync(Guid userId, string actor, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class StubSsprConfigurationStore : ISsprConfigurationStore
+    {
+        public SsprConfigurationModel Model { get; set; } = new(true, true, true, false, 30, 15, 3, "sms");
+
+        public Task<SsprConfigurationModel> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(Model);
+
+        public Task<SsprConfigurationModel> SaveAsync(SsprConfigurationUpdate update, CancellationToken cancellationToken = default)
+        {
+            Model = new SsprConfigurationModel(
+                update.Enabled,
+                update.RequireTwoFactor,
+                update.RequireCaptcha,
+                update.RequireSmsOtp,
+                update.TokenExpiryMinutes,
+                update.ThrottleWindowMinutes,
+                update.MaxRequestsPerWindow,
+                update.SmsConnectorKey);
+
+            return Task.FromResult(Model);
+        }
     }
 }

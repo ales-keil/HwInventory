@@ -32,6 +32,16 @@ public class CreateReportRequestDto
     [MaxLength(500)]
     public string StoragePath { get; set; } = string.Empty;
 
+    [MaxLength(200)]
+    public string? EmailSubjectTemplate { get; set; }
+
+    [MaxLength(4000)]
+    public string? EmailBodyTemplate { get; set; }
+
+    public bool NotifyOnFailureOnly { get; set; }
+
+    public bool IncludeArtifactInEmail { get; set; }
+
     public TimeSpan? RunAtTime { get; set; }
     public DayOfWeek? RunOnDayOfWeek { get; set; }
     public int? RunOnDayOfMonth { get; set; }
@@ -52,6 +62,10 @@ public record ReportDefinitionResponse(
     string? FilterJson,
     string? Recipients,
     string StoragePath,
+    string EmailSubjectTemplate,
+    string EmailBodyTemplate,
+    bool NotifyOnFailureOnly,
+    bool IncludeArtifactInEmail,
     TimeSpan? RunAtTime,
     DayOfWeek? RunOnDayOfWeek,
     int? RunOnDayOfMonth,
@@ -85,6 +99,10 @@ public static class ReportModelMapper
             dto.FilterJson,
             dto.Recipients,
             dto.StoragePath,
+            dto.EmailSubjectTemplate,
+            dto.EmailBodyTemplate,
+            dto.NotifyOnFailureOnly,
+            dto.IncludeArtifactInEmail,
             dto.RunAtTime,
             dto.RunOnDayOfWeek,
             dto.RunOnDayOfMonth,
@@ -102,6 +120,10 @@ public static class ReportModelMapper
             dto.FilterJson,
             dto.Recipients,
             dto.StoragePath,
+            dto.EmailSubjectTemplate,
+            dto.EmailBodyTemplate,
+            dto.NotifyOnFailureOnly,
+            dto.IncludeArtifactInEmail,
             dto.RunAtTime,
             dto.RunOnDayOfWeek,
             dto.RunOnDayOfMonth,
@@ -120,6 +142,10 @@ public static class ReportModelMapper
             model.FilterJson,
             model.Recipients,
             model.StoragePath,
+            model.EmailSubjectTemplate,
+            model.EmailBodyTemplate,
+            model.NotifyOnFailureOnly,
+            model.IncludeArtifactInEmail,
             model.RunAtTime,
             model.RunOnDayOfWeek,
             model.RunOnDayOfMonth,

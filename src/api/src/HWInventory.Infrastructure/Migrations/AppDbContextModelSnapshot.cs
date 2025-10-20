@@ -337,6 +337,16 @@ namespace HWInventory.Infrastructure.Migrations
                     .HasMaxLength(500)
                     .HasColumnType("nvarchar(500)");
 
+                b.Property<string>("EmailBodyTemplate")
+                    .IsRequired()
+                    .HasMaxLength(4000)
+                    .HasColumnType("nvarchar(4000)");
+
+                b.Property<string>("EmailSubjectTemplate")
+                    .IsRequired()
+                    .HasMaxLength(200)
+                    .HasColumnType("nvarchar(200)");
+
                 b.Property<bool>("Enabled")
                     .HasColumnType("bit");
 
@@ -370,6 +380,12 @@ namespace HWInventory.Infrastructure.Migrations
                 b.Property<string>("Recipients")
                     .HasMaxLength(500)
                     .HasColumnType("nvarchar(500)");
+
+                b.Property<bool>("IncludeArtifactInEmail")
+                    .HasColumnType("bit");
+
+                b.Property<bool>("NotifyOnFailureOnly")
+                    .HasColumnType("bit");
 
                 b.Property<TimeSpan?>("RunAtTime")
                     .HasColumnType("time");
@@ -979,6 +995,14 @@ namespace HWInventory.Infrastructure.Migrations
                     .HasMaxLength(2048)
                     .HasColumnType("nvarchar(2048)");
 
+                b.Property<string>("ClientIp")
+                    .HasMaxLength(64)
+                    .HasColumnType("nvarchar(64)");
+
+                b.Property<string>("UserAgent")
+                    .HasMaxLength(512)
+                    .HasColumnType("nvarchar(512)");
+
                 b.Property<DateTime?>("ModifiedAtUtc")
                     .HasColumnType("datetime2");
 
@@ -1004,6 +1028,10 @@ namespace HWInventory.Infrastructure.Migrations
                 b.HasKey("Id");
 
                 b.HasIndex("AppUserId", "Status");
+
+                b.HasIndex("AppUserId", "CreatedAtUtc");
+
+                b.HasIndex("ClientIp", "CreatedAtUtc");
 
                 b.HasIndex("Token")
                     .IsUnique();

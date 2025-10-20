@@ -11,6 +11,10 @@ export interface ReportDefinition {
   filterJson?: string | null;
   recipients?: string | null;
   storagePath: string;
+  emailSubjectTemplate: string;
+  emailBodyTemplate: string;
+  notifyOnFailureOnly: boolean;
+  includeArtifactInEmail: boolean;
   runAtTime?: string | null;
   runOnDayOfWeek?: number | null;
   runOnDayOfMonth?: number | null;
@@ -42,6 +46,10 @@ export interface CreateReportPayload {
   filterJson?: string | null;
   recipients?: string | null;
   storagePath: string;
+  emailSubjectTemplate?: string | null;
+  emailBodyTemplate?: string | null;
+  notifyOnFailureOnly: boolean;
+  includeArtifactInEmail: boolean;
   runAtTime?: string | null;
   runOnDayOfWeek?: number | null;
   runOnDayOfMonth?: number | null;

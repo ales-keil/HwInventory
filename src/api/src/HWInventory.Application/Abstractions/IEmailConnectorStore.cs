@@ -47,6 +47,9 @@ public record EmailNotificationRequest(
     IReadOnlyCollection<string> Recipients,
     string Subject,
     string Body,
-    bool IsBodyHtml);
+    bool IsBodyHtml,
+    IReadOnlyCollection<EmailAttachment>? Attachments = null);
 
 public record EmailSendResult(bool Success, string Message);
+
+public record EmailAttachment(string FileName, byte[] Content, string ContentType);

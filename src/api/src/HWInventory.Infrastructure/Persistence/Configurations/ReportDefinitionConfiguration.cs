@@ -15,6 +15,8 @@ public class ReportDefinitionConfiguration : IEntityTypeConfiguration<ReportDefi
         builder.Property(x => x.FilterJson).HasMaxLength(4000);
         builder.Property(x => x.Recipients).HasMaxLength(500);
         builder.Property(x => x.StoragePath).HasMaxLength(500);
+        builder.Property(x => x.EmailSubjectTemplate).HasMaxLength(200);
+        builder.Property(x => x.EmailBodyTemplate).HasMaxLength(4000);
         builder.HasMany(x => x.Runs)
             .WithOne(x => x.ReportDefinition)
             .HasForeignKey(x => x.ReportDefinitionId)
