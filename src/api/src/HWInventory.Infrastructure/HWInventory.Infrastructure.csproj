@@ -13,7 +13,6 @@
     <PackageReference Include="Otp.NET" Version="1.3.0" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.7.0" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="8.0.0" />
-    <PackageReference Include="System.IO.Compression.ZipFile" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../HWInventory.Application/HWInventory.Application.csproj" />
