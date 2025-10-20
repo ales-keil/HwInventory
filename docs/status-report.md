@@ -1,6 +1,6 @@
 # HW Inventory Platform – Current Status
 
-_Last updated: 2025-10-16T12:43:28Z_
+_Last updated: 2025-10-16T13:05:00Z_
 
 ## Implemented Capabilities
 - Monorepo scaffold targeting .NET 8 (API) and React/Vite (admin UI shell) with Tailwind-based dark/light theming.
@@ -28,6 +28,8 @@ _Last updated: 2025-10-16T12:43:28Z_
 - First-run wizard skeleton with a dedicated „Bezpečnostní nastavení“ krok, který agreguje klíčové bezpečnostní formuláře (OIDC/LDAP/SSPR/CAPTCHA/SMS), nově také SMTP konfiguraci a umožňuje aktivovat „lokální režim“ bez externích konektorů pro rychlé dokončení.
 - Kompletní inventární UI: React stránky „Servery“, „Síťová zařízení“, „Pracovní stanice“ s CRUD formuláři, stránkováním, fulltextem a filtry (status, prostředí/typ, lokalita) napojenými na nové API parametry, podporou VLAN/IP polí a vazbou na číselníky, dále „Audit“, „Číselníky“, „Štítky“ (správa šablon, ZPL/PDF náhledy, tiskové úlohy) a „Moduly“ pro přepínání feature flagů.
 - Workstation handover workflow nyní vytváří schvalovací požadavky – generuje QuestPDF předávací protokol, odešle e-mail s tlačítky „Přijmout“/„Odmítnout“ a po potvrzení novým vlastníkem automaticky přepíše vlastníka/umístění; Super Admin může převod provést i natvrdo.
+- Settings → Předávací protokoly: REST API `/api/settings/handover`, perzistentní uložiště AppSettings a React stránka s konfigurací výchozích příjemců, šablon e-mailů, loga a minimalistického/detaílního PDF včetně auditování změn.
+- UI validuje e-mailové adresy výchozích příjemců, zobrazuje inline chyby pro jednotlivé sloty a integrační testy nyní pokrývají REST API `/api/settings/handover` včetně limitu tří adres na sekci a normalizace hodnot.
 - Sdílená cache číselníků na FE (`useDictionaries`) zajišťuje, že inventární stránky načítají reference pouze jednou a filtry i formuláře používají jednotné hodnoty napříč sezeními.
 - Inventární tabulky podporují vícevýběr s hromadnými akcemi (vyřadit/obnovit/smazat) na straně API i UI, včetně nových batch endpointů `/api/servers|network-devices|workstations/batch/*` a odpovídající integrace v React komponentách.
 - Label rendering services that produce QuestPDF previews and ZPL output, plus REST endpoints for inventory CRUD (servers, network devices, workstations), dictionaries, modules, dashboard summary, audit exploration, and TOTP enrollment.

@@ -250,6 +250,7 @@ public static class DependencyInjection
         services.AddScoped<IImportService, ImportService>();
         services.AddScoped<IUpdateService, UpdateService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IHandoverConfigurationStore, HandoverConfigurationStore>();
         services.AddScoped<IWorkstationHandoverService, WorkstationHandoverService>();
 
         services.AddQuartz(q =>

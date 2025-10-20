@@ -35,6 +35,9 @@ public record WorkstationHandoverOptions(
     DateTime HandoverAtUtc,
     bool Force,
     string? AcceptUrl,
-    string? DeclineUrl);
+    string? DeclineUrl,
+    string? PdfLogoBase64 = null,
+    bool UseMinimalPdf = false,
+    string? PdfFooterNote = null);
 
 public record WorkstationHandoverResult(bool EmailSent, string? Message, byte[] PdfBytes, Guid? HandoverRequestId, bool PendingApproval);

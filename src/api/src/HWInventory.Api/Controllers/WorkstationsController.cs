@@ -21,10 +21,15 @@ namespace HWInventory.Api.Controllers;
 public class WorkstationsController : ApiControllerBase
 {
     private readonly IWorkstationHandoverService _handoverService;
+    private readonly IHandoverConfigurationStore _handoverConfigurationStore;
 
-    public WorkstationsController(IAppDbContext dbContext, IWorkstationHandoverService handoverService) : base(dbContext)
+    public WorkstationsController(
+        IAppDbContext dbContext,
+        IWorkstationHandoverService handoverService,
+        IHandoverConfigurationStore handoverConfigurationStore) : base(dbContext)
     {
         _handoverService = handoverService;
+        _handoverConfigurationStore = handoverConfigurationStore;
     }
 
     [HttpGet]
@@ -252,9 +257,21 @@ public class WorkstationsController : ApiControllerBase
 
         var handoverTimestamp = DateTime.UtcNow;
 
-        var toRecipients = NormalizeEmails(request.To);
-        var ccRecipients = NormalizeEmails(request.Cc);
-        var bccRecipients = NormalizeEmails(request.Bcc);
+        var configuration = await _handoverConfigurationStore.GetAsync(cancellationToken);
+
+        var toRecipients = NormalizeEmails((request.To ?? Array.Empty<string>()).Concat(configuration.DefaultTo));
+        var ccRecipients = NormalizeEmails((request.Cc ?? Array.Empty<string>()).Concat(configuration.DefaultCc));
+        var bccRecipients = NormalizeEmails((request.Bcc ?? Array.Empty<string>()).Concat(configuration.DefaultBcc));
+
+        var subject = string.IsNullOrWhiteSpace(request.Subject)
+            ? (string.IsNullOrWhiteSpace(configuration.DefaultSubject) ? null : configuration.DefaultSubject)
+            : request.Subject;
+
+        var messageBody = string.IsNullOrWhiteSpace(request.MessageBody)
+            ? (string.IsNullOrWhiteSpace(configuration.DefaultBody) ? null : configuration.DefaultBody)
+            : request.MessageBody;
+
+        var comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment;
 
         if (forceRequested)
         {
@@ -288,13 +305,16 @@ public class WorkstationsController : ApiControllerBase
                 To: toRecipients,
                 Cc: ccRecipients,
                 Bcc: bccRecipients,
-                Subject: request.Subject,
-                MessageBody: request.MessageBody,
-                Comment: request.Comment,
+                Subject: subject,
+                MessageBody: messageBody,
+                Comment: comment,
                 HandoverAtUtc: handoverTimestamp,
                 Force: true,
                 AcceptUrl: null,
-                DeclineUrl: null);
+                DeclineUrl: null,
+                PdfLogoBase64: configuration.PdfLogoBase64,
+                UseMinimalPdf: configuration.UseMinimalPdf,
+                PdfFooterNote: configuration.PdfFooterNote);
 
             var result = await _handoverService.ProcessAsync(entity, options, cancellationToken);
 
@@ -387,13 +407,16 @@ public class WorkstationsController : ApiControllerBase
             To: toRecipients,
             Cc: ccRecipients,
             Bcc: bccRecipients,
-            Subject: request.Subject,
-            MessageBody: request.MessageBody,
-            Comment: request.Comment,
+            Subject: subject,
+            MessageBody: messageBody,
+            Comment: comment,
             HandoverAtUtc: handoverTimestamp,
             Force: false,
             AcceptUrl: acceptUrl,
-            DeclineUrl: declineUrl);
+            DeclineUrl: declineUrl,
+            PdfLogoBase64: configuration.PdfLogoBase64,
+            UseMinimalPdf: configuration.UseMinimalPdf,
+            PdfFooterNote: configuration.PdfFooterNote);
 
         var emailResult = await _handoverService.ProcessAsync(entity, emailOptions, cancellationToken);
         emailResult = emailResult with { HandoverRequestId = handoverEntity.Id, PendingApproval = true };
@@ -622,9 +645,9 @@ public class WorkstationsController : ApiControllerBase
 
     private static readonly JsonSerializerOptions RecipientSerializerOptions = new(JsonSerializerDefaults.Web);
 
-    private static IReadOnlyCollection<string> NormalizeEmails(IReadOnlyCollection<string>? source)
+    private static IReadOnlyCollection<string> NormalizeEmails(IEnumerable<string>? source)
     {
-        if (source is null || source.Count == 0)
+        if (source is null)
         {
             return Array.Empty<string>();
         }

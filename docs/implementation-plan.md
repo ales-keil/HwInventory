@@ -38,8 +38,8 @@ This document enumerates the outstanding work required to transform the current 
   - Complete CRUD flows, retire/restore, hard delete (with password confirmation), comments, audit history, Excel import/export, PDF/CSV exports.
   - Enforce VLAN/IP pairing logic, status management, and scoped administration for Aplikační admin role.
 - **Workstation handover** ✅ _(baseline delivered 2025-10-11)_
-  - Implementováno: zachycení původního i nového umístění, aktualizace vlastníka/oddělení, generování QuestPDF protokolu a odeslání e-mailu s PDF přílohou (To/CC/BCC, předmět, text zprávy) přes SMTP konektor s auditními záznamy.
-  - Zbývá: šablony/brandování obsahu (defaultní texty, logo), uživatelské UI pro volbu příjemců a náhled e-mailu v Reactu, archivace odeslaných protokolů a konfigurace výchozích adres v Settings → Handover.
+  - Implementováno: zachycení původního i nového umístění, aktualizace vlastníka/oddělení, generování QuestPDF protokolu, schvalovací workflow a e-mailové šablony/konfigurace v Settings → Handover včetně výchozích příjemců, PDF loga a volby minimalistické/detaílní varianty.
+  - Zbývá: archivace odeslaných protokolů, reporting/statistiky předání a hlubší brandování (např. více log/šablon pro lokality).
 - **Labels & printing**
   - Finalize label template editor (JSON schema), Code128/EAN-13/QR rendering, ZPL and PDF outputs, batch printing, print job queue with destinations (download, named printer, raw socket 9100), audit, and artefact retention policies.
 - **Dictionaries**
@@ -129,6 +129,7 @@ designed to produce a demonstrable increment that can be validated with automate
    - Complete server/network/workstation CRUD, retire/restore, comments, audit diffing, VLAN/IP enforcement, and scoped admin
      behaviour.
    - Dokončit label management se ZPL/PDF renderingem a import/export dry-run; handover workflow s e-mailovým schválením a PDF protokolem je hotový.
+   - Další iterace: archivace dokončených předání, reporting a rozšířené brandingové volby (logo, barevné motivy) dle backlogu.
 4. **Operations & Integrations**
    - Finish connectors (SMTP, SMS, LDAP/OIDC, Webhooks hotové; doplnit SFTP/FTPS, Storage, Printing, rozšířenou Observability a Zabbix) s health reportingem a
      správou tajemství.

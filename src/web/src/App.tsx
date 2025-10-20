@@ -28,6 +28,7 @@ import { useSession } from './auth/SessionProvider';
 import { appConfig } from './config';
 import { PrintingSettingsPage } from './pages/PrintingSettingsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { HandoverSettingsPage } from './pages/HandoverSettingsPage';
 const navItems = [
   { to: '/', label: 'Dashboard', minimal: true },
   { to: '/servers', label: 'Servers', minimal: true },
@@ -43,6 +44,7 @@ const navItems = [
 const settingsItems = [
   { to: 'security', label: 'Security & Auth', minimal: true },
   { to: 'email', label: 'Email (SMTP)', minimal: false },
+  { to: 'handover', label: 'Předávací protokoly', minimal: true },
   { to: 'connectors', label: 'Konektory', minimal: false },
   { to: 'storage', label: 'Úložiště', minimal: false },
   { to: 'sftp', label: 'SFTP / FTPS', minimal: false },
@@ -166,6 +168,7 @@ const App = () => (
           {!appConfig.minimalMode && <Route path="export" element={<ExportJobsPage />} />}
           {!appConfig.minimalMode && <Route path="reports" element={<ReportsPage />} />}
           {!appConfig.minimalMode && <Route path="updates" element={<UpdatesPage />} />}
+          <Route path="handover" element={<HandoverSettingsPage />} />
           <Route path="dictionaries" element={<DictionariesPage />} />
           <Route path="*" element={<PlaceholderPage title="Settings" description="Administrative configuration center." />} />
         </Route>

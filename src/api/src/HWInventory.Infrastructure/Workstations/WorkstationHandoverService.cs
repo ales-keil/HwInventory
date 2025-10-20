@@ -11,6 +11,7 @@ using HWInventory.Application.Abstractions;
 using HWInventory.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -35,7 +36,18 @@ public class WorkstationHandoverService : IWorkstationHandoverService
         WorkstationHandoverOptions options,
         CancellationToken cancellationToken = default)
     {
-        var pdfBytes = GeneratePdf(workstation, options);
+        var tokens = BuildTemplateTokens(workstation, options);
+        var resolvedSubject = ApplyTemplate(options.Subject, tokens);
+        var resolvedBody = ApplyTemplate(options.MessageBody, tokens);
+        var resolvedComment = ApplyTemplate(options.Comment, tokens);
+
+        var effectiveOptions = options;
+        if (!string.Equals(resolvedComment, options.Comment, StringComparison.Ordinal))
+        {
+            effectiveOptions = effectiveOptions with { Comment = resolvedComment };
+        }
+
+        var pdfBytes = GeneratePdf(workstation, effectiveOptions);
 
         var recipients = options.To?.Where(NotNullOrWhiteSpace).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>();
         var ccRecipients = options.Cc?.Where(NotNullOrWhiteSpace).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>();
@@ -87,7 +99,7 @@ public class WorkstationHandoverService : IWorkstationHandoverService
                 smtp.Credentials = new System.Net.NetworkCredential(username, password);
             }
 
-            using var message = BuildMailMessage(workstation, options, fromAddress, replyTo, pdfBytes);
+            using var message = BuildMailMessage(workstation, effectiveOptions, fromAddress, replyTo, pdfBytes, resolvedSubject, resolvedBody);
 
             foreach (var recipient in recipients)
             {
@@ -114,18 +126,25 @@ public class WorkstationHandoverService : IWorkstationHandoverService
         }
     }
 
-    private static MailMessage BuildMailMessage(Workstation workstation, WorkstationHandoverOptions options, string fromAddress, string? replyTo, byte[] pdfBytes)
+    private static MailMessage BuildMailMessage(
+        Workstation workstation,
+        WorkstationHandoverOptions options,
+        string fromAddress,
+        string? replyTo,
+        byte[] pdfBytes,
+        string? resolvedSubject,
+        string? resolvedBody)
     {
-        var subject = string.IsNullOrWhiteSpace(options.Subject)
+        var subject = string.IsNullOrWhiteSpace(resolvedSubject)
             ? $"Předávací protokol – {workstation.Name} ({workstation.InventoryNumber})"
-            : options.Subject!;
+            : resolvedSubject!;
 
         var textBuilder = new StringBuilder();
         var htmlBuilder = new StringBuilder();
 
-        if (!string.IsNullOrWhiteSpace(options.MessageBody))
+        if (!string.IsNullOrWhiteSpace(resolvedBody))
         {
-            var sanitized = options.MessageBody!.Trim();
+            var sanitized = resolvedBody!.Trim();
             textBuilder.AppendLine(sanitized);
             textBuilder.AppendLine();
             htmlBuilder.AppendLine($"<p>{System.Net.WebUtility.HtmlEncode(sanitized).Replace("\n", "<br />")}</p>");
@@ -249,6 +268,7 @@ public class WorkstationHandoverService : IWorkstationHandoverService
     private static byte[] GeneratePdf(Workstation workstation, WorkstationHandoverOptions options)
     {
         using var stream = new MemoryStream();
+        var logoBytes = DecodeLogo(options.PdfLogoBase64);
 
         Document.Create(container =>
         {
@@ -258,15 +278,28 @@ public class WorkstationHandoverService : IWorkstationHandoverService
                 page.Margin(40);
                 page.DefaultTextStyle(x => x.FontSize(12));
 
-                page.Header()
-                    .AlignCenter()
-                    .Text("Předávací protokol pracovního zařízení")
-                    .SemiBold()
-                    .FontSize(20);
+                page.Header().Column(header =>
+                {
+                    header.Spacing(6);
+
+                    if (logoBytes is not null)
+                    {
+                        header.Item()
+                            .AlignCenter()
+                            .Height(60)
+                            .Image(logoBytes, ImageScaling.FitArea);
+                    }
+
+                    header.Item()
+                        .AlignCenter()
+                        .Text("Předávací protokol pracovního zařízení")
+                        .SemiBold()
+                        .FontSize(20);
+                });
 
                 page.Content().Column(column =>
                 {
-                    column.Spacing(10);
+                    column.Spacing(12);
                     column.Item().Text(text =>
                     {
                         text.Span("Zařízení: ").SemiBold();
@@ -283,82 +316,121 @@ public class WorkstationHandoverService : IWorkstationHandoverService
                         text.Span(options.Actor ?? "N/A");
                     });
 
-                    column.Item().Table(table =>
+                    if (options.UseMinimalPdf)
                     {
-                        table.ColumnsDefinition(columns =>
+                        column.Item().Column(section =>
                         {
-                            columns.RelativeColumn();
-                            columns.RelativeColumn();
-                        });
-
-                        table.Header(header =>
-                        {
-                            header.Cell().Element(CellHeader).Text("Původní stav");
-                            header.Cell().Element(CellHeader).Text("Nový stav");
-                        });
-
-                        table.Cell().Element(CellBody).Column(column =>
-                        {
-                            column.Item().Text(text =>
+                            section.Spacing(6);
+                            section.Item().Text("Shrnutí předání").SemiBold().FontSize(14);
+                            section.Item().Text(text =>
                             {
-                                text.Span("Uživatel: ").SemiBold();
-                                text.Span(options.OldOwnerDisplayName ?? "Neuvedeno");
-                            });
-                            column.Item().Text(text =>
-                            {
-                                text.Span("Oddělení: ").SemiBold();
-                                text.Span(options.OldOwnerDepartment ?? "Neuvedeno");
-                            });
-                            column.Item().Text(text =>
-                            {
-                                text.Span("Umístění: ").SemiBold();
+                                text.Span("Původní umístění: ").SemiBold();
                                 text.Span(options.OldLocationName ?? options.OldLocationId.ToString());
                             });
-                            if (!string.IsNullOrWhiteSpace(options.OldLocationNote))
+                            section.Item().Text(text =>
                             {
-                                column.Item().Text(text =>
-                                {
-                                    text.Span("Poznámka: ").SemiBold();
-                                    text.Span(options.OldLocationNote);
-                                });
-                            }
-                        });
-
-                        table.Cell().Element(CellBody).Column(column =>
-                        {
-                            column.Item().Text(text =>
-                            {
-                                text.Span("Uživatel: ").SemiBold();
-                                text.Span(options.NewOwnerDisplayName ?? "Neuvedeno");
-                            });
-                            column.Item().Text(text =>
-                            {
-                                text.Span("Oddělení: ").SemiBold();
-                                text.Span(options.NewOwnerDepartment ?? "Neuvedeno");
-                            });
-                            column.Item().Text(text =>
-                            {
-                                text.Span("Umístění: ").SemiBold();
+                                text.Span("Nové umístění: ").SemiBold();
                                 text.Span(options.NewLocationName ?? options.NewLocationId.ToString());
                             });
-                            if (!string.IsNullOrWhiteSpace(options.NewLocationNote))
+                            section.Item().Text(text =>
                             {
-                                column.Item().Text(text =>
+                                text.Span("Původní uživatel: ").SemiBold();
+                                text.Span(options.OldOwnerDisplayName ?? "Neuvedeno");
+                            });
+                            section.Item().Text(text =>
+                            {
+                                text.Span("Nový uživatel: ").SemiBold();
+                                text.Span(options.NewOwnerDisplayName ?? "Neuvedeno");
+                            });
+                            if (!string.IsNullOrWhiteSpace(options.Comment))
+                            {
+                                section.Item().Text(text =>
                                 {
                                     text.Span("Poznámka: ").SemiBold();
-                                    text.Span(options.NewLocationNote);
+                                    text.Span(options.Comment);
                                 });
                             }
                         });
-                    });
-
-                    if (!string.IsNullOrWhiteSpace(options.Comment))
+                    }
+                    else
                     {
-                        column.Item().Text(text =>
+                        column.Item().Table(table =>
                         {
-                            text.Span("Komentář: ").SemiBold();
-                            text.Span(options.Comment);
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellHeader).Text("Původní stav");
+                                header.Cell().Element(CellHeader).Text("Nový stav");
+                            });
+
+                            table.Cell().Element(CellBody).Column(col =>
+                            {
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Uživatel: ").SemiBold();
+                                    text.Span(options.OldOwnerDisplayName ?? "Neuvedeno");
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Oddělení: ").SemiBold();
+                                    text.Span(options.OldOwnerDepartment ?? "Neuvedeno");
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Umístění: ").SemiBold();
+                                    text.Span(options.OldLocationName ?? options.OldLocationId.ToString());
+                                });
+                                if (!string.IsNullOrWhiteSpace(options.OldLocationNote))
+                                {
+                                    col.Item().Text(text =>
+                                    {
+                                        text.Span("Poznámka: ").SemiBold();
+                                        text.Span(options.OldLocationNote);
+                                    });
+                                }
+                            });
+
+                            table.Cell().Element(CellBody).Column(col =>
+                            {
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Uživatel: ").SemiBold();
+                                    text.Span(options.NewOwnerDisplayName ?? "Neuvedeno");
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Oddělení: ").SemiBold();
+                                    text.Span(options.NewOwnerDepartment ?? "Neuvedeno");
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span("Umístění: ").SemiBold();
+                                    text.Span(options.NewLocationName ?? options.NewLocationId.ToString());
+                                });
+                                if (!string.IsNullOrWhiteSpace(options.NewLocationNote))
+                                {
+                                    col.Item().Text(text =>
+                                    {
+                                        text.Span("Poznámka: ").SemiBold();
+                                        text.Span(options.NewLocationNote);
+                                    });
+                                }
+                            });
                         });
+
+                        if (!string.IsNullOrWhiteSpace(options.Comment))
+                        {
+                            column.Item().Text(text =>
+                            {
+                                text.Span("Komentář: ").SemiBold();
+                                text.Span(options.Comment);
+                            });
+                        }
                     }
 
                     column.Item().LineHorizontal(0.5f);
@@ -379,9 +451,23 @@ public class WorkstationHandoverService : IWorkstationHandoverService
                     });
                 });
 
-                page.Footer()
-                    .AlignRight()
-                    .Text($"Generováno: {DateTime.UtcNow:dd.MM.yyyy HH:mm} UTC");
+                page.Footer().Column(footer =>
+                {
+                    footer.Spacing(4);
+                    if (!string.IsNullOrWhiteSpace(options.PdfFooterNote))
+                    {
+                        footer.Item()
+                            .AlignLeft()
+                            .Text(options.PdfFooterNote)
+                            .FontSize(10)
+                            .Italic();
+                    }
+
+                    footer.Item()
+                        .AlignRight()
+                        .Text($"Generováno: {DateTime.UtcNow:dd.MM.yyyy HH:mm} UTC")
+                        .FontSize(9);
+                });
             });
         }).GeneratePdf(stream);
 
@@ -395,6 +481,57 @@ public class WorkstationHandoverService : IWorkstationHandoverService
         => container.Padding(5).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten3);
 
     private static bool NotNullOrWhiteSpace(string? value) => !string.IsNullOrWhiteSpace(value);
+
+    private static IReadOnlyDictionary<string, string?> BuildTemplateTokens(Workstation workstation, WorkstationHandoverOptions options)
+    {
+        return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["{AssetTag}"] = workstation.InventoryNumber,
+            ["{Name}"] = workstation.Name,
+            ["{OldLocation}"] = options.OldLocationName ?? options.OldLocationId.ToString(),
+            ["{NewLocation}"] = options.NewLocationName ?? options.NewLocationId.ToString(),
+            ["{OldOwner}"] = options.OldOwnerDisplayName,
+            ["{NewOwner}"] = options.NewOwnerDisplayName,
+            ["{OldDepartment}"] = options.OldOwnerDepartment,
+            ["{NewDepartment}"] = options.NewOwnerDepartment,
+            ["{Date}"] = options.HandoverAtUtc.ToString("dd.MM.yyyy HH:mm"),
+            ["{Actor}"] = options.Actor,
+            ["{Comment}"] = options.Comment
+        };
+    }
+
+    private static string? ApplyTemplate(string? template, IReadOnlyDictionary<string, string?> tokens)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return template;
+        }
+
+        var result = template;
+        foreach (var (key, value) in tokens)
+        {
+            result = result.Replace(key, value ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return result;
+    }
+
+    private static byte[]? DecodeLogo(string? base64)
+    {
+        if (string.IsNullOrWhiteSpace(base64))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Convert.FromBase64String(base64);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     private static Dictionary<string, string?> ParseConfiguration(string? json)
     {
