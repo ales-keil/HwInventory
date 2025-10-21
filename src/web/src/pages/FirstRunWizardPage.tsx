@@ -69,6 +69,24 @@ export const FirstRunWizardPage = () => {
   const securityReady = summaryQuery.data?.criticalReady ?? false;
   const securityBlocked =
     step.key === 'security' && !securityReady && !summaryQuery.isError && !localModeEnabled;
+  const nextStepBlocked = !securityReady && !localModeEnabled && !summaryQuery.isError;
+
+  const canNavigateTo = (index: number) => {
+    if (index <= clampedStep) {
+      return true;
+    }
+
+    const target = stepDefinitions[index];
+    if (!target) {
+      return false;
+    }
+
+    if (target.key === 'summary' && nextStepBlocked) {
+      return false;
+    }
+
+    return !nextStepBlocked;
+  };
 
   const goNext = () => {
     if (clampedStep < stepDefinitions.length - 1) {
@@ -97,20 +115,28 @@ export const FirstRunWizardPage = () => {
       </header>
 
       <nav className="flex flex-wrap gap-3">
-        {stepDefinitions.map((definition, index) => (
-          <button
-            key={definition.key}
-            type="button"
-            onClick={() => setActiveStep(index)}
-            className={`rounded px-3 py-1 text-sm transition ${
-              index === clampedStep
-                ? 'bg-sky-600 text-white shadow'
-                : 'border border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            {index + 1}. {definition.title}
-          </button>
-        ))}
+        {stepDefinitions.map((definition, index) => {
+          const disabled = !canNavigateTo(index);
+          return (
+            <button
+              key={definition.key}
+              type="button"
+              onClick={() => {
+                if (!disabled) {
+                  setActiveStep(index);
+                }
+              }}
+              disabled={disabled}
+              className={`rounded px-3 py-1 text-sm transition ${
+                index === clampedStep
+                  ? 'bg-sky-600 text-white shadow'
+                  : 'border border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'
+              } ${disabled ? 'cursor-not-allowed opacity-60 hover:bg-transparent' : ''}`}
+            >
+              {index + 1}. {definition.title}
+            </button>
+          );
+        })}
       </nav>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -149,14 +175,14 @@ export const FirstRunWizardPage = () => {
           <button
             type="button"
             onClick={goNext}
-            disabled={securityBlocked}
+            disabled={securityBlocked || nextStepBlocked}
             className={`rounded px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${
-              securityBlocked
+              securityBlocked || nextStepBlocked
                 ? 'cursor-not-allowed bg-slate-400 dark:bg-slate-600'
                 : 'bg-sky-600 hover:bg-sky-700'
             }`}
           >
-            {securityBlocked ? 'Dokončete konfiguraci' : 'Pokračovat'}
+            {securityBlocked || nextStepBlocked ? 'Dokončete konfiguraci' : 'Pokračovat'}
           </button>
         ) : (
           <button
@@ -168,12 +194,12 @@ export const FirstRunWizardPage = () => {
           </button>
         )}
       </div>
-      {step.key === 'security' && securityBlocked && (
+      {(step.key === 'security' && securityBlocked) || nextStepBlocked ? (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           Pro pokračování je potřeba dokončit konfiguraci všech požadovaných bezpečnostních komponent (OIDC/LDAP, 2FA/SSPR,
-          CAPTCHA, SMS a politika hesel).
+          CAPTCHA, SMS, SMTP a politika hesel) nebo zvolit lokální režim.
         </p>
-      )}
+      ) : null}
       {step.key === 'security' && summaryQuery.isError && (
         <p className="text-xs text-rose-500 dark:text-rose-400">
           Nepodařilo se ověřit stav zabezpečení. Zkuste stránku obnovit po dokončení konfigurace nebo zkontrolujte připojení k
