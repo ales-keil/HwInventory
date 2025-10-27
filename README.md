@@ -99,6 +99,16 @@ If you are planning the next development iteration, tackle the milestones in thi
 
 > **Note:** In this environment the .NET SDK and third-party packages (e.g., QuestPDF) are not pre-installed. The project files are provided so that the solution restores and builds once the SDK is available.
 
+## Continuous Integration
+
+Tento repozitář využívá GitHub Actions workflow (`.github/workflows/ci.yml`),
+který při každém `push`/`pull_request` instaluje .NET SDK pomocí kroku
+`actions/setup-dotnet@v4` s verzí `8.0.x`, následně volá `dotnet restore`
+nad řešením, `dotnet build` a `dotnet test`, a – pokud je přítomen frontend –
+také `actions/setup-node@v4` pro Node 20 a `npm ci`. Díky tomu se v CI
+nevyskytuje chyba `NU1102` způsobená chybějícím SDK nebo balíčkem
+`System.IO.Compression.ZipFile`, protože využíváme rozhraní přímo z BCL.
+
 ### Výchozí lokální účet
 
 Při prvním spuštění (během seedování databáze) se vytvoří účet **admin@localhost** s heslem **ChangeMe!123!**. Hodnoty lze přepsat v konfiguraci (`SeedAdmin:Email`, `SeedAdmin:Password`). Heslo po přihlášení neprodleně změňte a zvažte zapnutí 2FA.
