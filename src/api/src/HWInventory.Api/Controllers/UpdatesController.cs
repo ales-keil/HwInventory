@@ -18,11 +18,13 @@ namespace HWInventory.Api.Controllers;
 public class UpdatesController : ApiControllerBase
 {
     private readonly IUpdateService _updateService;
+    private readonly IUpdateConfigurationStore _configurationStore;
 
-    public UpdatesController(IAppDbContext dbContext, IUpdateService updateService)
+    public UpdatesController(IAppDbContext dbContext, IUpdateService updateService, IUpdateConfigurationStore configurationStore)
         : base(dbContext)
     {
         _updateService = updateService;
+        _configurationStore = configurationStore;
     }
 
     [HttpGet("history")]
@@ -32,6 +34,40 @@ public class UpdatesController : ApiControllerBase
         var history = await _updateService.ListHistoryAsync(page, size, cancellationToken);
         Response.Headers["X-Total-Count"] = history.Count.ToString();
         return Ok(history.Select(Map));
+    }
+
+    [HttpGet("configuration")]
+    public async Task<ActionResult<UpdateConfigurationResponseDto>> GetConfigurationAsync(CancellationToken cancellationToken)
+    {
+        var configuration = await _configurationStore.GetAsync(cancellationToken);
+        return Ok(Map(configuration));
+    }
+
+    [HttpPut("configuration")]
+    public async Task<ActionResult<UpdateConfigurationResponseDto>> SaveConfigurationAsync([FromBody] UpdateConfigurationRequestDto request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.DeploymentRootPath))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Chybí cílová složka",
+                Detail = "Zadejte cestu, do které se má aktualizace nasazovat.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var result = await _configurationStore.SaveAsync(new UpdateDeploymentConfigurationUpdate(
+            request.DeploymentRootPath,
+            string.IsNullOrWhiteSpace(request.WebRootPath) ? null : request.WebRootPath,
+            request.UseAppOfflineFile,
+            request.RunMigrations,
+            string.IsNullOrWhiteSpace(request.PostDeploymentScript) ? null : request.PostDeploymentScript),
+            cancellationToken);
+
+        AddAuditLog("Maintenance.Updates", Guid.Empty, "Configuration", "Aktualizace nastavení nasazení", result);
+        await DbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(Map(result));
     }
 
     [HttpGet("{id:guid}")]
@@ -142,4 +178,11 @@ public class UpdatesController : ApiControllerBase
         model.FailureReason,
         model.ManifestJson,
         model.LogPath);
+
+    private static UpdateConfigurationResponseDto Map(UpdateDeploymentConfigurationModel model) => new(
+        model.DeploymentRootPath,
+        model.WebRootPath,
+        model.UseAppOfflineFile,
+        model.RunMigrations,
+        model.PostDeploymentScript);
 }

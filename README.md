@@ -69,10 +69,10 @@ Pokud chcete rychle zprovoznit jen inventární moduly **Servers / Network devic
 
 ### Update workflow (Settings → Aktualizace)
 
-* Upload ZIP/PKG packages through the new REST endpoint `POST /api/updates` or via the React administration page **Settings → Aktualizace**.
-* Each upload computes an SHA256 hash, persists the package under `%ProgramFiles%/HWInventory/updates`, and optionally triggers a full backup before processing.
-* Quartz job `UpdatePackageProcessor` validates integrity, extracts the archive to a staging directory, parses `update-manifest.json` (if present), and stores verbose log output available under `GET /api/updates/{id}/log`.
-* The updates UI lists package history, surface errors, and provides one-click download of logs and manifest preview, ensuring administrators have an audit trail before swapping binaries in production.
+* Nejprve nakonfigurujte cílové složky v sekci **Konfigurace nasazení** – určete cestu k aplikaci, volitelnou složku statického webu, zda se má vytvářet `app_offline.htm`, zda spouštět SQL skripty z manifestu a případný post-deployment skript (např. PowerShell).
+* Nahrané ZIP/PKG balíčky přes REST endpoint `POST /api/updates` nebo React stránku **Settings → Aktualizace** získají SHA256 hash, uloží se do `%ProgramFiles%/HWInventory/updates` a před zpracováním mohou spustit plnou zálohu.
+* Quartz job `UpdatePackageProcessor` po validaci rozbalí balíček, podle konfigurace spustí SQL skripty deklarované v `update-manifest.json`, zkopíruje obsah `publish/api` a `publish/web` do cílových složek (při zachování lokální konfigurace přeskočí `appsettings*.json`) a případně spustí post-deployment skript. Veškerý průběh zapisuje do logu dostupného přes `GET /api/updates/{id}/log`.
+* Updates UI zobrazuje historii balíčků včetně manifestů/logů a nově také formulář pro nasazovací konfiguraci, takže administrátoři vidí aktuální cesty i stav posledních nasazení přímo ve webovém rozhraní.
 
 ### Suggested execution order
 

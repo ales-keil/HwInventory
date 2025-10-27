@@ -32,3 +32,19 @@ public record UpdatePackageResponseDto(
     string? FailureReason,
     string? ManifestJson,
     string? LogPath);
+
+public record UpdateConfigurationResponseDto(
+    string DeploymentRootPath,
+    string? WebRootPath,
+    bool UseAppOfflineFile,
+    bool RunMigrations,
+    string? PostDeploymentScript);
+
+public class UpdateConfigurationRequestDto
+{
+    public string DeploymentRootPath { get; set; } = string.Empty;
+    public string? WebRootPath { get; set; }
+    public bool UseAppOfflineFile { get; set; }
+    public bool RunMigrations { get; set; } = true;
+    public string? PostDeploymentScript { get; set; }
+}

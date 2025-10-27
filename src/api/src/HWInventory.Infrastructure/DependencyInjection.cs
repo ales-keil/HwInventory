@@ -246,6 +246,7 @@ public static class DependencyInjection
         services.AddSingleton<IConfigureOptions<IdentityOptions>, PasswordPolicyOptionsConfigurator>();
         services.AddScoped<IBackupConfigurationStore, BackupConfigurationStore>();
         services.AddScoped<IBackupService, BackupService>();
+        services.AddScoped<IUpdateConfigurationStore, UpdateConfigurationStore>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<IImportService, ImportService>();
         services.AddScoped<IUpdateService, UpdateService>();

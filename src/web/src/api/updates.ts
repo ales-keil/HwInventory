@@ -19,6 +19,22 @@ export interface UpdatePackageResponse {
   logPath?: string;
 }
 
+export interface UpdateConfigurationResponse {
+  deploymentRootPath: string;
+  webRootPath?: string;
+  useAppOfflineFile: boolean;
+  runMigrations: boolean;
+  postDeploymentScript?: string;
+}
+
+export interface UpdateConfigurationRequest {
+  deploymentRootPath: string;
+  webRootPath?: string;
+  useAppOfflineFile: boolean;
+  runMigrations: boolean;
+  postDeploymentScript?: string;
+}
+
 export interface UploadUpdatePayload {
   file: File;
   version?: string;
@@ -60,5 +76,15 @@ export async function uploadUpdatePackage(payload: UploadUpdatePayload) {
 
 export async function downloadUpdateLog(id: string) {
   const response = await apiClient.get(`/api/updates/${id}/log`, { responseType: 'blob' });
+  return response.data;
+}
+
+export async function getUpdateConfiguration() {
+  const response = await apiClient.get<UpdateConfigurationResponse>('/api/updates/configuration');
+  return response.data;
+}
+
+export async function saveUpdateConfiguration(payload: UpdateConfigurationRequest) {
+  const response = await apiClient.put<UpdateConfigurationResponse>('/api/updates/configuration', payload);
   return response.data;
 }

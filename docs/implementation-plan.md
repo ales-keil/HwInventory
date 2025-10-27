@@ -56,8 +56,8 @@ This document enumerates the outstanding work required to transform the current 
 - **Backup & restore**
   - Rozšířit stávající modul o pokročilé funkce: incremental/differential snapshoty, cílové storage konektory (SMB/S3), archivaci a čištění starých záloh, export/import pouze nastavení aplikace, CLI nástroje a smoke testy obnovy.
 - **Updates module** ✅ _(baseline delivered 2025-10-08)_
-  - Implementováno: REST API `/api/updates`, perzistence balíčků, výpočet SHA256, volitelná záloha přes `UpdateService` + `BackupService`, extrakce do staging adresáře, parsování `update-manifest.json`, audit, download logů a React stránka „Aktualizace“.
-  - Zbývá: propojit se skutečnou maintenance mode signalizací, file-swap orchestrace (stop web, replace publish output, warm-up), rollback workflow v UI, integrace s All-in-One builderem a smoke testy aktualizačního scénáře.
+  - Implementováno: REST API `/api/updates`, perzistence balíčků s SHA256 hashem, volitelná záloha, parsování `update-manifest.json`, konfigurace nasazovacích cest (aplikace/web), spouštění SQL skriptů z manifestu, kopírování `publish/api` + `publish/web` do cílových složek se zachováním lokální konfigurace, post-deployment skript a kompletní React UI (historie + formulář Konfigurace nasazení) s log downloadem.
+  - Zbývá: plnohodnotná maintenance mode orchestrace (koordinace downtime/warm-up, signalizace do IIS), UI pro rollback na předchozí balíček včetně zobrazení záloh, telemetrie/dashboards nad délkou a výsledky aktualizací a návaznost na All-in-One builder (ověření balíčku vs. nasazený build) + smoke test aktualizačního scénáře.
 - **Connectors catalogue**
   - Rozšířit REST API a React stránku „Konektory“ o CRUD/editaci profilů pro Database, External SQL, Observability a Zabbix včetně health-checků, plánovaných ověřování, retry/backoff politik a správy tajemství (aktuální iterace pokrývá SMTP/SMS testy, LDAP/OIDC přehledy, Storage, SFTP/FTPS, Printing a Webhooks).
 - **Observability**

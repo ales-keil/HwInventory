@@ -1,5 +1,13 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
-import { downloadUpdateLog, listUpdateHistory, UpdatePackageResponse, uploadUpdatePackage } from '../api/updates';
+import {
+  downloadUpdateLog,
+  getUpdateConfiguration,
+  listUpdateHistory,
+  saveUpdateConfiguration,
+  UpdateConfigurationRequest,
+  UpdatePackageResponse,
+  uploadUpdatePackage
+} from '../api/updates';
 
 type FormState = {
   file?: File;
@@ -25,6 +33,38 @@ export function UpdatesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [success, setSuccess] = useState<string | undefined>();
+  const [configForm, setConfigForm] = useState<UpdateConfigurationRequest>({
+    deploymentRootPath: '',
+    webRootPath: undefined,
+    useAppOfflineFile: false,
+    runMigrations: true,
+    postDeploymentScript: undefined
+  });
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configError, setConfigError] = useState<string | undefined>();
+  const [configSuccess, setConfigSuccess] = useState<string | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setConfigLoading(true);
+        const settings = await getUpdateConfiguration();
+        setConfigForm({
+          deploymentRootPath: settings.deploymentRootPath,
+          webRootPath: settings.webRootPath,
+          useAppOfflineFile: settings.useAppOfflineFile,
+          runMigrations: settings.runMigrations,
+          postDeploymentScript: settings.postDeploymentScript
+        });
+      } catch (err) {
+        console.error(err);
+        setConfigError('Nepodařilo se načíst nastavení aktualizací.');
+      } finally {
+        setConfigLoading(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -99,14 +139,131 @@ export function UpdatesPage() {
     }
   };
 
+  const handleConfigSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setConfigError(undefined);
+    setConfigSuccess(undefined);
+
+    try {
+      setConfigSaving(true);
+      const saved = await saveUpdateConfiguration(configForm);
+      setConfigForm({
+        deploymentRootPath: saved.deploymentRootPath,
+        webRootPath: saved.webRootPath,
+        useAppOfflineFile: saved.useAppOfflineFile,
+        runMigrations: saved.runMigrations,
+        postDeploymentScript: saved.postDeploymentScript
+      });
+      setConfigSuccess('Konfigurace nasazení byla uložena.');
+    } catch (err: any) {
+      console.error(err);
+      const detail = err?.response?.data?.detail ?? 'Uložení nastavení selhalo.';
+      setConfigError(detail);
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const configDisabled = configLoading || configSaving;
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Aktualizace aplikace</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Nahrajte balíček ZIP/PKG s novou verzí aplikace. Systém jej uloží, ověří hash a připraví staging adresář pro následné nasazení.
+          Nastavte cílové složky a poté nahrajte balíček ZIP/PKG s novou verzí aplikace. Systém provede zálohu (pokud je zapnutá), ověří integritu,
+          spustí deklarované migrace a zkopíruje soubory do produkční složky přímo z webového rozhraní.
         </p>
       </div>
+
+      <section className="space-y-4 rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Konfigurace nasazení</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Určete, kam se mají soubory aktualizace zkopírovat a zda se mají spouštět migrace nebo pomocné skripty.
+          </p>
+        </div>
+        <form onSubmit={handleConfigSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Cílová složka aplikace *</label>
+              <input
+                type="text"
+                value={configForm.deploymentRootPath}
+                onChange={(e) => setConfigForm((prev) => ({ ...prev, deploymentRootPath: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="C:\\inetpub\\wwwroot\\HWInventory"
+                disabled={configDisabled}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Složka statického webu (volitelné)</label>
+              <input
+                type="text"
+                value={configForm.webRootPath ?? ''}
+                onChange={(e) => setConfigForm((prev) => ({ ...prev, webRootPath: e.target.value || undefined }))}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="C:\\inetpub\\wwwroot\\HWInventory\\wwwroot"
+                disabled={configDisabled}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Post-deployment skript (volitelné)</label>
+            <input
+              type="text"
+              value={configForm.postDeploymentScript ?? ''}
+              onChange={(e) => setConfigForm((prev) => ({ ...prev, postDeploymentScript: e.target.value || undefined }))}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="C:\\Scripts\\after-update.ps1"
+              disabled={configDisabled}
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Skript (např. .ps1) dostane parametry <code className="font-mono">-DeploymentRoot</code> a <code className="font-mono">-StagingPath</code>.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={configForm.useAppOfflineFile}
+                onChange={(e) => setConfigForm((prev) => ({ ...prev, useAppOfflineFile: e.target.checked }))}
+                className="h-4 w-4"
+                disabled={configDisabled}
+              />
+              Vytvořit při nasazení <code className="font-mono">app_offline.htm</code>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={configForm.runMigrations}
+                onChange={(e) => setConfigForm((prev) => ({ ...prev, runMigrations: e.target.checked }))}
+                className="h-4 w-4"
+                disabled={configDisabled}
+              />
+              Spustit SQL skripty z manifestu
+            </label>
+          </div>
+          {configError && (
+            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200">
+              {configError}
+            </div>
+          )}
+          {configSuccess && (
+            <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-700 dark:bg-green-900/30 dark:text-green-200">
+              {configSuccess}
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <button
+              type="submit"
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
+              disabled={configDisabled}
+            >
+              {configSaving ? 'Ukládám…' : 'Uložit nastavení'}
+            </button>
+          </div>
+        </form>
+      </section>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div>
