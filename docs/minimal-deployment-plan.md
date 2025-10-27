@@ -3,6 +3,26 @@
 Cílem je dostat řešení do stavu, kdy lze na IIS nasadit API + React administraci,
 pracovat pouze s lokálními účty a obsluhovat evidence **Servers / Network devices / Workstations**.
 
+## Shrnutí pěti hlavních kroků
+
+1. **Připravit základní autentizaci a UI pro přihlášení.**<br/>
+   Pokrývá REST endpointy pro přihlášení/odhlášení, seed výchozího Super Admina a React formulář
+   s ochranou administrace (splněno – viz kroky 1–2 níže).
+2. **Zajistit průvodce prvním spuštěním pro lokální režim.**<br/>
+   Wizard musí umožnit pokračovat bez externích konektorů, hlídat readiness a
+   nastavit minimální konfiguraci (splněno – krok 3).
+3. **Zjednodušit konfiguraci a skrýt nedokončené moduly.**<br/>
+   Příprava `appsettings.Production.json`, minimal-mode flagu a UI omezení na inventář
+   (splněno – kroky 4 a 7).
+4. **Automatizovat publikaci na IIS včetně SQL migrací.**<br/>
+   Installer skript musí vytvořit DB, spustit migrace, zkopírovat API i React build a chránit
+   seed heslo (splněno – kroky 5 a 9).
+5. **Ověřit funkčnost a zdokumentovat provoz.**<br/>
+   End-to-end CRUD testy, smoke test skript a minimální nasazovací příručka (splněno – kroky 6, 8 a 10).
+
+> Kompletní stav jednotlivých úkolů zůstává v tabulce níže; pětkrokový přehled zajišťuje, že
+> každý hlavní milník má jasnou odpovědnost a lze jej snadno zopakovat při dalším nasazení.
+
 | Krok | Stav | Popis |
 | --- | --- | --- |
 | 1 | ✅ Hotovo | Zpřístupnit čistě lokální přihlášení – přidat REST endpointy pro přihlášení/odhlášení, vytvořit výchozího Super Admina při seedování databáze a vše zdokumentovat. |
