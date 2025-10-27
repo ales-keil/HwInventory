@@ -4,8 +4,10 @@ using System.IO;
 using System.Threading.Tasks;
 using HWInventory.Api.Models;
 using HWInventory.Application.Abstractions;
+using HWInventory.Application.Common;
 using HWInventory.Domain.Security;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HWInventory.Api.Controllers;
@@ -55,8 +57,15 @@ public class ReportsController : ApiControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var model = await _reportService.CreateAsync(request.ToCreateModel(), HttpContext.RequestAborted);
-        return CreatedAtAction(nameof(Get), new { id = model.Id }, model.ToResponse());
+        try
+        {
+            var model = await _reportService.CreateAsync(request.ToCreateModel(), HttpContext.RequestAborted);
+            return CreatedAtAction(nameof(Get), new { id = model.Id }, model.ToResponse());
+        }
+        catch (FilterValidationException ex)
+        {
+            return BadRequest(CreateFilterProblem("Neplatné filtry reportu", ex.Errors));
+        }
     }
 
     [HttpPut("{id:guid}")]
@@ -67,8 +76,15 @@ public class ReportsController : ApiControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var model = await _reportService.UpdateAsync(id, request.ToUpdateModel(), HttpContext.RequestAborted);
-        return Ok(model.ToResponse());
+        try
+        {
+            var model = await _reportService.UpdateAsync(id, request.ToUpdateModel(), HttpContext.RequestAborted);
+            return Ok(model.ToResponse());
+        }
+        catch (FilterValidationException ex)
+        {
+            return BadRequest(CreateFilterProblem("Neplatné filtry reportu", ex.Errors));
+        }
     }
 
     [HttpDelete("{id:guid}")]
@@ -121,5 +137,20 @@ public class ReportsController : ApiControllerBase
 
         var fileName = $"report-{runId}{extension}";
         return File(artifact, "application/octet-stream", fileName);
+    }
+
+    private static ValidationProblemDetails CreateFilterProblem(string title, IReadOnlyList<string> errors)
+    {
+        var dictionary = new Dictionary<string, string[]>
+        {
+            ["filters"] = errors.ToArray()
+        };
+
+        return new ValidationProblemDetails(dictionary)
+        {
+            Title = title,
+            Detail = "Zadané filtry obsahují chyby. Opravte je a zkuste to znovu.",
+            Status = StatusCodes.Status400BadRequest
+        };
     }
 }

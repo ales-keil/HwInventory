@@ -6,11 +6,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HWInventory.Application.Abstractions;
+using HWInventory.Application.Common;
 using HWInventory.Domain.Entities;
 using HWInventory.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using HWInventory.Infrastructure.Common;
 
 namespace HWInventory.Infrastructure.Reports;
 
@@ -42,6 +44,14 @@ public class ReportService : IReportService
         if (string.IsNullOrWhiteSpace(request.StoragePath))
         {
             throw new ArgumentException("Storage path is required", nameof(request.StoragePath));
+        }
+
+        var validationErrors = InventoryQueryFilters.ValidateForReportScope(
+            request.Scope,
+            InventoryQueryFilters.Parse(request.FilterJson, _logger));
+        if (validationErrors.Count > 0)
+        {
+            throw new FilterValidationException(validationErrors);
         }
 
         var definition = new ReportDefinition
@@ -81,6 +91,14 @@ public class ReportService : IReportService
         if (definition is null)
         {
             throw new InvalidOperationException("Report definition not found");
+        }
+
+        var validationErrors = InventoryQueryFilters.ValidateForReportScope(
+            request.Scope,
+            InventoryQueryFilters.Parse(request.FilterJson, _logger));
+        if (validationErrors.Count > 0)
+        {
+            throw new FilterValidationException(validationErrors);
         }
 
         definition.Name = request.Name;
@@ -241,19 +259,21 @@ public class ReportService : IReportService
             var fileName = $"report_{definition.Scope.ToString().ToLowerInvariant()}_{timestamp}{extension}";
             var filePath = Path.Combine(storagePath, fileName);
 
+            var filters = InventoryQueryFilters.Parse(definition.FilterJson, _logger);
+
             switch (definition.Format)
             {
                 case ExportFormat.Csv:
-                    await GenerateCsvAsync(definition.Scope, filePath, cancellationToken);
+                    await GenerateCsvAsync(definition.Scope, filters, filePath, cancellationToken);
                     break;
                 case ExportFormat.Xlsx:
-                    await GenerateCsvAsync(definition.Scope, filePath, cancellationToken);
+                    await GenerateCsvAsync(definition.Scope, filters, filePath, cancellationToken);
                     break;
                 case ExportFormat.Pdf:
-                    await GenerateCsvAsync(definition.Scope, filePath, cancellationToken);
+                    await GenerateCsvAsync(definition.Scope, filters, filePath, cancellationToken);
                     break;
                 default:
-                    await GenerateCsvAsync(definition.Scope, filePath, cancellationToken);
+                    await GenerateCsvAsync(definition.Scope, filters, filePath, cancellationToken);
                     break;
             }
 
@@ -281,7 +301,7 @@ public class ReportService : IReportService
         await NotifySubscribersAsync(definition, run, cancellationToken);
     }
 
-    private async Task GenerateCsvAsync(ReportScope scope, string filePath, CancellationToken cancellationToken)
+    private async Task GenerateCsvAsync(ReportScope scope, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, string filePath, CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
         await using var writer = new StreamWriter(stream, Encoding.UTF8);
@@ -289,27 +309,29 @@ public class ReportService : IReportService
         switch (scope)
         {
             case ReportScope.Servers:
-                await WriteServersAsync(writer, cancellationToken);
+                await WriteServersAsync(writer, filters, cancellationToken);
                 break;
             case ReportScope.NetworkDevices:
-                await WriteNetworkDevicesAsync(writer, cancellationToken);
+                await WriteNetworkDevicesAsync(writer, filters, cancellationToken);
                 break;
             case ReportScope.Workstations:
-                await WriteWorkstationsAsync(writer, cancellationToken);
+                await WriteWorkstationsAsync(writer, filters, cancellationToken);
                 break;
             case ReportScope.Audit:
-                await WriteAuditAsync(writer, cancellationToken);
+                await WriteAuditAsync(writer, filters, cancellationToken);
                 break;
             default:
-                await WriteServersAsync(writer, cancellationToken);
+                await WriteServersAsync(writer, filters, cancellationToken);
                 break;
         }
     }
 
-    private async Task WriteServersAsync(StreamWriter writer, CancellationToken cancellationToken)
+    private async Task WriteServersAsync(StreamWriter writer, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
         await writer.WriteLineAsync("Name,InventoryNumber,Manufacturer,Model,Environment,WsusPriority,OperatingSystem,Role,Location,Status");
-        var servers = await _dbContext.Servers.AsNoTracking().OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        var query = _dbContext.Servers.AsNoTracking();
+        query = InventoryQueryFilters.ApplyServerFilters(query, filters);
+        var servers = await query.OrderBy(x => x.Name).ToListAsync(cancellationToken);
 
         var dictionaryIds = servers
             .SelectMany(server => new[]
@@ -350,10 +372,12 @@ public class ReportService : IReportService
         }
     }
 
-    private async Task WriteNetworkDevicesAsync(StreamWriter writer, CancellationToken cancellationToken)
+    private async Task WriteNetworkDevicesAsync(StreamWriter writer, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
         await writer.WriteLineAsync("Name,InventoryNumber,Type,Manufacturer,Model,Location,Status");
-        var devices = await _dbContext.NetworkDevices.AsNoTracking().OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        var query = _dbContext.NetworkDevices.AsNoTracking();
+        query = InventoryQueryFilters.ApplyNetworkFilters(query, filters);
+        var devices = await query.OrderBy(x => x.Name).ToListAsync(cancellationToken);
 
         var dictionaryIds = devices
             .SelectMany(device => new[] { device.DeviceTypeId, device.LocationId })
@@ -381,10 +405,12 @@ public class ReportService : IReportService
         }
     }
 
-    private async Task WriteWorkstationsAsync(StreamWriter writer, CancellationToken cancellationToken)
+    private async Task WriteWorkstationsAsync(StreamWriter writer, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
         await writer.WriteLineAsync("Name,InventoryNumber,Owner,Department,OperatingSystem,Type,Location,Status");
-        var workstations = await _dbContext.Workstations.AsNoTracking().OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        var query = _dbContext.Workstations.AsNoTracking();
+        query = InventoryQueryFilters.ApplyWorkstationFilters(query, filters);
+        var workstations = await query.OrderBy(x => x.Name).ToListAsync(cancellationToken);
 
         var dictionaryIds = workstations
             .SelectMany(workstation => new[]
@@ -419,10 +445,15 @@ public class ReportService : IReportService
         }
     }
 
-    private async Task WriteAuditAsync(StreamWriter writer, CancellationToken cancellationToken)
+    private async Task WriteAuditAsync(StreamWriter writer, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
         await writer.WriteLineAsync("Timestamp,Entity,EntityId,Action,PerformedBy");
-        var logs = await _dbContext.AuditLogs.AsNoTracking().OrderByDescending(x => x.PerformedAtUtc).Take(500).ToListAsync(cancellationToken);
+        var query = _dbContext.AuditLogs.AsNoTracking();
+        query = InventoryQueryFilters.ApplyAuditFilters(query, filters);
+        var logs = await query
+            .OrderByDescending(x => x.PerformedAtUtc)
+            .Take(500)
+            .ToListAsync(cancellationToken);
         foreach (var log in logs)
         {
             await writer.WriteLineAsync(string.Join(',', new[]

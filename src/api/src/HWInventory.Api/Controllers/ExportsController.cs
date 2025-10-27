@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HWInventory.Api.Models;
 using HWInventory.Application.Abstractions;
+using HWInventory.Application.Common;
 using HWInventory.Domain.Enums;
 using HWInventory.Domain.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -66,19 +68,26 @@ public class ExportsController : ApiControllerBase
             });
         }
 
-        var job = await _exportService.QueueExportAsync(new ExportRequest(
-            scope,
-            format,
-            request.StoragePath,
-            request.FilterJson,
-            request.SendEmail,
-            request.EmailRecipients),
-            cancellationToken);
+        try
+        {
+            var job = await _exportService.QueueExportAsync(new ExportRequest(
+                scope,
+                format,
+                request.StoragePath,
+                request.FilterJson,
+                request.SendEmail,
+                request.EmailRecipients),
+                cancellationToken);
 
-        AddAuditLog("Exports", job.Id, "Create", "Zařazení exportu", job);
-        await DbContext.SaveChangesAsync(cancellationToken);
+            AddAuditLog("Exports", job.Id, "Create", "Zařazení exportu", job);
+            await DbContext.SaveChangesAsync(cancellationToken);
 
-        return AcceptedAtAction(nameof(GetExportAsync), new { id = job.Id }, Map(job));
+            return AcceptedAtAction(nameof(GetExportAsync), new { id = job.Id }, Map(job));
+        }
+        catch (FilterValidationException ex)
+        {
+            return BadRequest(CreateFilterProblem("Neplatné filtry exportu", ex.Errors));
+        }
     }
 
     [HttpGet("{id:guid}")]
@@ -177,6 +186,21 @@ public class ExportsController : ApiControllerBase
             ArtifactPath = model.ArtifactPath,
             DownloadCount = model.DownloadCount,
             LastDownloadedAtUtc = model.LastDownloadedAtUtc
+        };
+    }
+
+    private static ValidationProblemDetails CreateFilterProblem(string title, IReadOnlyList<string> errors)
+    {
+        var dictionary = new Dictionary<string, string[]>
+        {
+            ["filters"] = errors.ToArray()
+        };
+
+        return new ValidationProblemDetails(dictionary)
+        {
+            Title = title,
+            Detail = "Zadané filtry obsahují chyby. Opravte je a zkuste to znovu.",
+            Status = StatusCodes.Status400BadRequest
         };
     }
 }

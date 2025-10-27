@@ -49,10 +49,10 @@ This document enumerates the outstanding work required to transform the current 
   - Persist JSON diffs for all entity operations, support filtering (entity, user, action, timeframe), highlight deletes/restores, and include export functionality that logs access.
 - **Reports & schedules** ✅ _(baseline delivered 2025-10-10, templating update 2025-10-16)_
   - Implementováno: REST API `/api/reports`, `ReportService` s perzistentními definicemi, Quartz úloha `ReportJobProcessor`, CSV generování pro Servery/Network/Workstations/Audit, historie běhů, ruční spuštění, konfigurovatelné šablony předmětu/těla e-mailů s tokeny a volitelné přiložení artefaktů a React stránka „Reporty & Plánování“.
-  - Zbývá: doplnit pokročilé filtry/šablony, XLSX/PDF výstupy, deduplikaci a multi-kanálové notifikace, archivaci artefaktů, SLA/alerting a reportingové dashboardy.
+  - Zbývá: doplnit pokročilé šablony, XLSX/PDF výstupy, deduplikaci a multi-kanálové notifikace, archivaci artefaktů, SLA/alerting a reportingové dashboardy.
 - **Import/Export jobs** ✅ _(baseline completed 2025-10-09)_
   - Implementováno: CSV/XLSX ingest, mapování sloupců, konfliktní strategie (skip/update/create), dry-run, auditované souhrny, e-mail notifikace, perzistence výsledků, React UI pro správu fronty a Quartz joby pro import/export.
-- Zbývá: rozšířit exporty o pokročilé filtry, přidat plánované exporty/notifikace přes více konektorů a rozšířit importní validace o business pravidla.
+- Zbývá: rozšířit exporty o plánované notifikace přes více konektorů a rozšířit importní validace o business pravidla.
 - **Backup & restore**
   - Rozšířit stávající modul o pokročilé funkce: incremental/differential snapshoty, cílové storage konektory (SMB/S3), archivaci a čištění starých záloh, export/import pouze nastavení aplikace, CLI nástroje a smoke testy obnovy.
 - **Updates module** ✅ _(baseline delivered 2025-10-08)_
@@ -138,6 +138,7 @@ designed to produce a demonstrable increment that can be validated with automate
 5. **Frontend completion & UX polish**
    - Deliver the full React/Vite admin app, dark/light theming, contextual help, manual viewer, and feature-specific pages.
    - Add Playwright tests and align UI copy with terminology in the specification.
+   - Postavit UX pro sestavování report/export filtrů (backend nyní validuje a vrací detailní chyby, UI zatím nabízí pouze raw JSON textarea).
 6. **Packaging, CI/CD, and Release Enablement**
    - Finalize PowerShell installers, builder/merger scripts, All-in-One ZIP with SHA256, GitHub Actions pipelines, release notes,
      manual PDFs, and smoke tests ready for acceptance.

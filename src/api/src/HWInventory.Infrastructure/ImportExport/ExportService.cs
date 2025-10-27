@@ -8,8 +8,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HWInventory.Application.Abstractions;
+using HWInventory.Application.Common;
 using HWInventory.Domain.Entities;
 using HWInventory.Domain.Enums;
+using HWInventory.Infrastructure.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -44,6 +46,14 @@ public class ExportService : IExportService
 
         var storagePath = Path.GetFullPath(request.StoragePath);
         Directory.CreateDirectory(storagePath);
+
+        var validationErrors = InventoryQueryFilters.ValidateForExportScope(
+            request.Scope,
+            InventoryQueryFilters.Parse(request.FilterJson, _logger));
+        if (validationErrors.Count > 0)
+        {
+            throw new FilterValidationException(validationErrors);
+        }
 
         var actor = ResolveActor();
 
@@ -187,22 +197,24 @@ public class ExportService : IExportService
         var fullPath = Path.Combine(job.StoragePath, job.FileName);
         Directory.CreateDirectory(job.StoragePath);
 
+        var filters = InventoryQueryFilters.Parse(job.FilterJson, _logger);
+
         switch (job.Scope)
         {
             case ExportScope.Servers:
-                await ExportServersAsync(fullPath, cancellationToken);
+                await ExportServersAsync(fullPath, filters, cancellationToken);
                 break;
             case ExportScope.NetworkDevices:
-                await ExportNetworkDevicesAsync(fullPath, cancellationToken);
+                await ExportNetworkDevicesAsync(fullPath, filters, cancellationToken);
                 break;
             case ExportScope.Workstations:
-                await ExportWorkstationsAsync(fullPath, cancellationToken);
+                await ExportWorkstationsAsync(fullPath, filters, cancellationToken);
                 break;
             case ExportScope.Dictionaries:
                 await ExportDictionariesAsync(fullPath, cancellationToken);
                 break;
             case ExportScope.AuditLogs:
-                await ExportAuditLogsAsync(fullPath, cancellationToken);
+                await ExportAuditLogsAsync(fullPath, filters, cancellationToken);
                 break;
             default:
                 throw new InvalidOperationException($"Export scope {job.Scope} není podporován.");
@@ -211,12 +223,15 @@ public class ExportService : IExportService
         return fullPath;
     }
 
-    private async Task ExportServersAsync(string path, CancellationToken cancellationToken)
+    private async Task ExportServersAsync(string path, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
-        var servers = await _dbContext.Servers
+        var query = _dbContext.Servers
             .AsNoTracking()
-            .Include(x => x.NetworkAssignments)
-            .ToListAsync(cancellationToken);
+            .Include(x => x.NetworkAssignments);
+
+        query = InventoryQueryFilters.ApplyServerFilters(query, filters);
+
+        var servers = await query.ToListAsync(cancellationToken);
 
         var dictionaryLookup = await LoadDictionaryLookupAsync(servers.SelectMany(s => new[]
         {
@@ -253,12 +268,15 @@ public class ExportService : IExportService
         }
     }
 
-    private async Task ExportNetworkDevicesAsync(string path, CancellationToken cancellationToken)
+    private async Task ExportNetworkDevicesAsync(string path, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
-        var devices = await _dbContext.NetworkDevices
+        var query = _dbContext.NetworkDevices
             .AsNoTracking()
-            .Include(x => x.NetworkAssignments)
-            .ToListAsync(cancellationToken);
+            .Include(x => x.NetworkAssignments);
+
+        query = InventoryQueryFilters.ApplyNetworkFilters(query, filters);
+
+        var devices = await query.ToListAsync(cancellationToken);
 
         var dictionaryLookup = await LoadDictionaryLookupAsync(devices.SelectMany(device => new[]
         {
@@ -288,12 +306,15 @@ public class ExportService : IExportService
         }
     }
 
-    private async Task ExportWorkstationsAsync(string path, CancellationToken cancellationToken)
+    private async Task ExportWorkstationsAsync(string path, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
-        var workstations = await _dbContext.Workstations
+        var query = _dbContext.Workstations
             .AsNoTracking()
-            .Include(x => x.NetworkAssignments)
-            .ToListAsync(cancellationToken);
+            .Include(x => x.NetworkAssignments);
+
+        query = InventoryQueryFilters.ApplyWorkstationFilters(query, filters);
+
+        var workstations = await query.ToListAsync(cancellationToken);
 
         var dictionaryLookup = await LoadDictionaryLookupAsync(workstations.SelectMany(ws => new[]
         {
@@ -351,10 +372,14 @@ public class ExportService : IExportService
         }
     }
 
-    private async Task ExportAuditLogsAsync(string path, CancellationToken cancellationToken)
+    private async Task ExportAuditLogsAsync(string path, IReadOnlyList<InventoryQueryFilters.FilterCriterion> filters, CancellationToken cancellationToken)
     {
-        var logs = await _dbContext.AuditLogs
-            .AsNoTracking()
+        var query = _dbContext.AuditLogs
+            .AsNoTracking();
+
+        query = InventoryQueryFilters.ApplyAuditFilters(query, filters);
+
+        var logs = await query
             .OrderByDescending(x => x.PerformedAtUtc)
             .Take(5000)
             .ToListAsync(cancellationToken);
