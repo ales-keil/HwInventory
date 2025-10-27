@@ -1,5 +1,5 @@
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { DashboardPage } from './pages/DashboardPage';
 import { FirstRunWizardPage } from './pages/FirstRunWizardPage';
@@ -61,6 +61,7 @@ const settingsItems = [
 const Layout = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout, isLoggingOut } = useSession();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -70,53 +71,86 @@ const Layout = () => {
     }
   }, [logout]);
 
+  const closeMobileNav = () => setMobileNavOpen(false);
+
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-      <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">HW Inventory</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Operations control center</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.displayName ?? user?.userName}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 text-slate-100">
+      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-white">HW Inventory</h1>
+              <p className="text-sm text-slate-400">Operations control center</p>
             </div>
             <button
-              onClick={toggleTheme}
-              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               type="button"
+              className="inline-flex items-center justify-center rounded-md border border-slate-700 p-2 text-slate-100 transition hover:bg-slate-800 sm:hidden"
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+              aria-expanded={mobileNavOpen}
+              aria-controls="primary-navigation"
             >
-              {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
-            </button>
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-60"
-              type="button"
-            >
-              {isLoggingOut ? 'Odhlasuji…' : 'Odhlásit'}
+              <span className="sr-only">Přepnout navigaci</span>
+              {mobileNavOpen ? '✕' : '☰'}
             </button>
           </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="text-sm sm:text-right">
+              <p className="font-semibold text-white">{user?.displayName ?? user?.userName}</p>
+              <p className="text-xs text-slate-400">{user?.email}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-100 shadow-sm transition hover:bg-slate-800"
+                type="button"
+              >
+                {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="rounded-md bg-emerald-500 px-3 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400 disabled:opacity-60"
+                type="button"
+              >
+                {isLoggingOut ? 'Odhlasuji…' : 'Odhlásit'}
+              </button>
+            </div>
+          </div>
         </div>
-        <nav className="bg-slate-50 dark:bg-slate-950">
-          <div className="mx-auto flex max-w-6xl flex-wrap gap-3 px-6 py-2 text-sm font-medium">
+        <nav
+          id="primary-navigation"
+          className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6 lg:px-8"
+        >
+          <div className="hidden flex-wrap gap-2 text-sm font-medium sm:flex">
             {navItems
               .filter((item) => item.minimal || !appConfig.minimalMode)
               .map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                className="rounded px-3 py-1 text-slate-700 transition hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                {item.label}
-              </Link>
-            ))}
+                  className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-2 text-slate-200 transition hover:bg-slate-800/80"
+                >
+                  {item.label}
+                </Link>
+              ))}
+          </div>
+          <div className={`${mobileNavOpen ? 'flex' : 'hidden'} flex-col gap-2 text-sm font-medium sm:hidden`}>
+            {navItems
+              .filter((item) => item.minimal || !appConfig.minimalMode)
+              .map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="rounded-lg border border-slate-800 bg-slate-900/80 px-4 py-2 text-slate-200 transition hover:bg-slate-800"
+                  onClick={closeMobileNav}
+                >
+                  {item.label}
+                </Link>
+              ))}
           </div>
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>
@@ -125,19 +159,21 @@ const Layout = () => {
 
 const SettingsLayout = () => (
   <div className="space-y-6">
-    <nav className="flex flex-wrap gap-3">
-      {settingsItems
-        .filter((item) => item.minimal || !appConfig.minimalMode)
-        .map((item) => (
-        <Link
-          key={item.to}
-          to={item.to}
-          className="rounded border border-slate-200 px-3 py-1 text-sm text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="-mx-4 overflow-x-auto px-4 pb-2">
+      <nav className="flex min-w-full flex-wrap gap-2">
+        {settingsItems
+          .filter((item) => item.minimal || !appConfig.minimalMode)
+          .map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+            >
+              {item.label}
+            </Link>
+          ))}
+      </nav>
+    </div>
     <Outlet />
   </div>
 );

@@ -8,7 +8,7 @@ type ThemeContextValue = {
 };
 
 export const ThemeContext = createContext<ThemeContextValue>({
-  theme: 'light',
+  theme: 'dark',
   toggleTheme: () => undefined
 });
 
@@ -21,11 +21,16 @@ type ThemeProviderProps = {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') {
-      return 'light';
+      return 'dark';
     }
 
     const stored = window.localStorage.getItem(STORAGE_KEY) as Theme | null;
-    return stored ?? 'light';
+    if (stored) {
+      return stored;
+    }
+
+    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)');
+    return prefersDark?.matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
