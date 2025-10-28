@@ -12,8 +12,16 @@ export interface AuditLogEntry {
   changedFieldsJson?: string | null;
 }
 
-export const getAuditLogs = async (entityType?: string) => {
-  const params = entityType ? { entityType } : undefined;
-  const { data } = await apiClient.get<AuditLogEntry[]>('/audit', { params });
+interface AuditLogFilters {
+  entityType?: string;
+  user?: string;
+  action?: string;
+}
+
+export const getAuditLogs = async (filters: AuditLogFilters = {}) => {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+  const { data } = await apiClient.get<AuditLogEntry[]>('/audit', { params: Object.keys(params).length ? params : undefined });
   return data;
 };

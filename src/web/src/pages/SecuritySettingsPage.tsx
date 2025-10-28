@@ -346,7 +346,9 @@ export const SecuritySettingsPage = ({ variant = 'full' }: SecuritySettingsPageP
   const auditQuery = useQuery({
     queryKey: ['audit', 'security'],
     queryFn: async () => {
-      const responses = await Promise.all(SECURITY_AUDIT_TYPES.map((type) => getAuditLogs(type)));
+      const responses = await Promise.all(
+        SECURITY_AUDIT_TYPES.map((type) => getAuditLogs({ entityType: type }))
+      );
       return responses.flat().sort((a, b) => new Date(b.performedAtUtc).getTime() - new Date(a.performedAtUtc).getTime());
     }
   });

@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AuditLogEntry, getAuditLogs } from '../api/audit';
+import { AuditDiffViewer } from '../components/AuditDiffViewer';
 
 export const AuditPage = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [actionFilter, setActionFilter] = useState('');
 
   const loadLogs = async () => {
     try {
       setLoading(true);
-      const items = await getAuditLogs(entityFilter || undefined);
+      const items = await getAuditLogs({
+        entityType: entityFilter || undefined,
+        user: userFilter || undefined,
+        action: actionFilter || undefined,
+      });
       setLogs(items);
       setError(null);
     } catch (err) {
@@ -22,7 +29,14 @@ export const AuditPage = () => {
 
   useEffect(() => {
     void loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const actions = useMemo(() => {
+    const values = new Set<string>();
+    logs.forEach((log) => values.add(log.action));
+    return Array.from(values).sort();
+  }, [logs]);
 
   return (
     <div className="space-y-6">
@@ -34,15 +48,41 @@ export const AuditPage = () => {
           </p>
         </div>
         <div className="flex items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span>Filtr podle entity</span>
-            <input
-              value={entityFilter}
-              onChange={(event) => setEntityFilter(event.target.value)}
-              placeholder="Servers / Workstations / Settings…"
-              className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
-            />
-          </label>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="flex flex-col gap-1 text-sm">
+              <span>Entita</span>
+              <input
+                value={entityFilter}
+                onChange={(event) => setEntityFilter(event.target.value)}
+                placeholder="Servers / Workstations / Settings…"
+                className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>Uživatel</span>
+              <input
+                value={userFilter}
+                onChange={(event) => setUserFilter(event.target.value)}
+                placeholder="např. admin@localhost"
+                className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>Akce</span>
+              <select
+                value={actionFilter}
+                onChange={(event) => setActionFilter(event.target.value)}
+                className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+              >
+                <option value="">Vše</option>
+                {actions.map((action) => (
+                  <option key={action} value={action}>
+                    {action}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <button
             onClick={() => void loadLogs()}
             className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
@@ -81,9 +121,14 @@ export const AuditPage = () => {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                  <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed">
-                    {log.changedFieldsJson ?? log.changeSummary ?? '—'}
-                  </pre>
+                  <div className="space-y-2">
+                    {log.changeSummary && (
+                      <div className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                        {log.changeSummary}
+                      </div>
+                    )}
+                    <AuditDiffViewer entry={log} />
+                  </div>
                 </td>
               </tr>
             ))}

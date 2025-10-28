@@ -46,7 +46,8 @@ This document enumerates the outstanding work required to transform the current 
 - **Dictionaries**
   - Build full CRUD with import/export (CSV/XLSX), duplicate detection, referential integrity, VLAN metadata requirements, and audit.
 - **Audit logging**
-  - Persist JSON diffs for all entity operations, support filtering (entity, user, action, timeframe), highlight deletes/restores, and include export functionality that logs access.
+  - ✅ UI diff viewer s filtrováním podle entity/uživatele/akce a tabulkovým zobrazením změněných hodnot (2025-10-20).
+  - Persist JSON diffs pro všechny operace entit (pokryto na úrovni EF Core), doplnit exporty s auditním záznamem přístupu a zvýraznění delete/restore v UI.
 - **Reports & schedules** ✅ _(baseline delivered 2025-10-10, templating update 2025-10-16)_
   - Implementováno: REST API `/api/reports`, `ReportService` s perzistentními definicemi, Quartz úloha `ReportJobProcessor`, CSV generování pro Servery/Network/Workstations/Audit, historie běhů, ruční spuštění, konfigurovatelné šablony předmětu/těla e-mailů s tokeny a volitelné přiložení artefaktů a React stránka „Reporty & Plánování“.
   - Zbývá: doplnit pokročilé šablony, XLSX/PDF výstupy, deduplikaci a multi-kanálové notifikace, archivaci artefaktů, SLA/alerting a reportingové dashboardy.
