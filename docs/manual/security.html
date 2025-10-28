@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Bezpečnost a 2FA</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1f2933; }
+    h1, h2, h3 { color: #111827; }
+    ul { margin-bottom: 1rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; background: #fff; }
+    .card h3 { margin-top: 0; }
+    .warning { background: #fee2e2; border-left: 4px solid #dc2626; padding: 0.75rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Bezpečnost, RBAC a vícefaktorová autentizace</h1>
+  <p>HW Inventory využívá ASP.NET Core Identity s politikami založenými na rolích a datových scopech. Tato kapitola shrnuje klíčová nastavení.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>RBAC role</h3>
+      <ul>
+        <li><strong>Super Admin</strong> – plný přístup, správa nastavení a číselníků.</li>
+        <li><strong>SRV Administrator</strong> – kompletní správa serverů + audit serverů.</li>
+        <li><strong>NET Administrator</strong> – kompletní správa síťových prvků + audit síťových prvků.</li>
+        <li><strong>App Administrator</strong> – servery pouze v přiřazeném scope.</li>
+        <li><strong>Helpdesk</strong> – CRUD nad Workstations.</li>
+        <li><strong>Helpdesk Read</strong> – pouze čtení Workstations.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>2FA a SSPR</h3>
+      <ul>
+        <li>Podporované metody: TOTP (Microsoft Authenticator) a e-mail/SMS kódy.</li>
+        <li>Super Admin může resetovat 2FA i vynutit jeho aktivaci pro konkrétní roli/skupinu.</li>
+        <li>Self-service reset hesla vyžaduje ověření CAPTCHA a platný SMS konektor (pokud je povinný).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Integrace s AD / OIDC</h3>
+      <ul>
+        <li>Konfigurace LDAP zahrnuje více OU, mapování atributů a pravidla Group→Role.</li>
+        <li>OIDC podporuje Discovery dokument, klientské ID/secret a mapování claimů na role.</li>
+        <li>Každá změna konfigurace se ukládá do auditu s diffem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Politika hesel</h2>
+  <ul>
+    <li>Výchozí nastavení: min. délka 12 znaků, alespoň jedna číslice, velké a malé písmeno, speciální znak.</li>
+    <li>Historie hesel zabraňuje opakovanému použití posledních 5 hesel.</li>
+    <li>Zamykání účtu po 5 neúspěšných pokusech na 15 minut (hodnoty lze upravit v UI).</li>
+  </ul>
+
+  <h2>Bezpečnostní metriky a alerty</h2>
+  <ul>
+    <li>Dashboard zobrazuje adopci 2FA, počet uzamčených účtů, aktivních relací a čekajících resetů.</li>
+    <li>Prahy pro alerty lze nastavit v sekci <strong>Security Settings</strong>; při překročení se odešle e-mail přes SMTP konektor.</li>
+    <li>Historie snapshotů je dostupná pro audit a dlouhodobé sledování.</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Důležité:</strong> V produkčním prostředí vždy vynucujte 2FA pro Super Adminy a nastavte pravidelnou rotaci hesel/secretů. Mapování AD skupin pravidelně revidujte, aby odpovídalo organizační struktuře.
+  </div>
+</body>
+</html>

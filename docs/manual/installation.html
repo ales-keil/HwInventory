@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Instalace na IIS</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1f2933; background: #fff; }
+    h1, h2, h3 { color: #111827; }
+    code { background: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 4px; }
+    pre { background: #111827; color: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    ul { margin-bottom: 1rem; }
+    .note { background: #e0f2fe; border-left: 4px solid #0369a1; padding: 0.75rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Instalace HW Inventory na Microsoft IIS</h1>
+  <p>Tento dokument popisuje doporučený postup pro nasazení minimální varianty HW Inventory na Microsoft IIS s&nbsp;využitím SQL Serveru.</p>
+
+  <h2>1. Předpoklady</h2>
+  <ul>
+    <li>Windows Server 2019 nebo novější se zapnutou rolí <strong>Web Server (IIS)</strong>.</li>
+    <li>Nainstalované <strong>.NET 8 Hosting Bundle</strong> (obsahuje .NET Runtime i ASP.NET Core Module v2).</li>
+    <li>SQL Server 2019+ (lokální instance nebo dostupná přes síť).</li>
+    <li>Účet s oprávněním vytvářet databáze a zapisovat do cílového adresáře webu.</li>
+  </ul>
+
+  <div class="note">
+    <strong>Poznámka:</strong> Pokud používáte minimální režim, externí konektory (LDAP, SMTP, SMS) nejsou pro instalaci povinné. Lze je nakonfigurovat později v administraci.
+  </div>
+
+  <h2>2. Příprava artefaktů</h2>
+  <ol>
+    <li>Na build stroji spusťte PowerShell skript <code>scripts/builder.ps1</code> s&nbsp;parametrem <code>-Mode Publish</code>, případně využijte GitHub Actions, které generují adresář <code>publish/</code>.</li>
+    <li>Zkontrolujte, že ve výsledném balíku jsou podsložky <code>publish/api</code>, <code>publish/web</code>, <code>logs</code> a <code>updates</code>.</li>
+    <li>Připravte si konfigurační soubor <code>appsettings.Production.json</code> s&nbsp;hodnotami připojení na SQL Server (viz kapitola „První spuštění“).</li>
+  </ol>
+
+  <h2>3. Vytvoření IIS zdrojů</h2>
+  <ol>
+    <li>Spusťte PowerShell skript <code>scripts/installer.ps1</code> z balíku na cílovém serveru.</li>
+    <li>Zadejte cílovou cestu (např. <code>C:\inetpub\HWInventory</code>) a připojení na SQL Server.</li>
+    <li>Skript vytvoří aplikaci v IIS, konfiguruje App Pool (No Managed Code) a připraví adresářovou strukturu včetně šifrování výchozího hesla správce (DPAPI).</li>
+  </ol>
+
+  <h2>4. První spuštění aplikace</h2>
+  <ol>
+    <li>Otevřete prohlížeč a přejděte na URL webu (např. <code>https://inventory.internal.local</code>).</li>
+    <li>Proběhne průvodce prvním spuštěním, ve kterém můžete zvolit <em>Lokální režim</em> – dokončíte tím nastavení bez externích konektorů.</li>
+    <li>Po dokončení se přihlaste výchozím účtem <code>admin@localhost</code> / heslo uvedené ve výstupu instalátoru (doporučená okamžitá změna).</li>
+  </ol>
+
+  <h2>5. Smoke test</h2>
+  <p>Pro ověření funkčnosti spusťte PowerShell skript <code>scripts/smoke-test.ps1</code> s parametry URL webu a přístupových údajů. Skript ověří:</p>
+  <ul>
+    <li>Úspěšné přihlášení.</li>
+    <li>Vytvoření serveru, síťového zařízení a pracovní stanice přes API.</li>
+    <li>Záznam operací v auditním logu.</li>
+  </ul>
+
+  <h2>6. Další kroky</h2>
+  <ul>
+    <li>Proveďte konfiguraci číselníků v sekci <strong>Nastavení &rarr; Číselníky</strong>.</li>
+    <li>V případě potřeby nakonfigurujte SMTP/LDAP/SSO/SMS konektory a aktivujte dvoufaktorovou autentizaci.</li>
+    <li>Pro integraci s tiskárnami a storage vyplňte příslušné konektory v nastavení.</li>
+  </ul>
+</body>
+</html>
