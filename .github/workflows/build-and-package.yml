@@ -1,0 +1,135 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      API_SMOKE_URL: 'http://localhost:5005'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Dotnet info
+        run: dotnet --info
+
+      - name: Restore dependencies
+        run: dotnet restore src/api/HWInventory.sln
+
+      - name: Build
+        run: dotnet build src/api/HWInventory.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test src/api/HWInventory.sln --configuration Release --no-build --nologo
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install web dependencies
+        working-directory: src/web
+        run: npm install
+
+      - name: Build web assets
+        working-directory: src/web
+        run: npm run build --if-present
+
+      - name: Publish API
+        run: dotnet publish src/api/src/HWInventory.Api/HWInventory.Api.csproj --configuration Release --output publish/api
+
+      - name: Archive web
+        run: |
+          mkdir -p publish/web
+          cp -R src/web/dist publish/web/
+
+      - name: Launch API for smoke tests
+        shell: pwsh
+        run: |
+          $publishPath = Join-Path "${{ github.workspace }}" "publish/api"
+          if (-not (Test-Path $publishPath)) {
+            throw "Publish output not found at $publishPath"
+          }
+
+          $job = Start-Job -ScriptBlock {
+              param($path, $url)
+              $env:ASPNETCORE_ENVIRONMENT = "Development"
+              $env:ASPNETCORE_URLS = $url
+              Set-Location $path
+              dotnet HWInventory.Api.dll
+          } -ArgumentList $publishPath, $env:API_SMOKE_URL
+
+          Start-Sleep -Seconds 25
+          $state = (Get-Job -Id $job.Id).State
+          if ($state -ne 'Running') {
+              $output = Receive-Job -Id $job.Id -ErrorAction SilentlyContinue | Out-String
+              if ($output) { Write-Host $output }
+              throw "API job exited prematurely with state '$state'"
+          }
+
+          "API_JOB_ID=$($job.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          $healthUrl = "$env:API_SMOKE_URL/health"
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 10; $attempt++) {
+              try {
+                  $response = Invoke-RestMethod -Uri $healthUrl -Method Get -TimeoutSec 5
+                  if ($response.status) {
+                      Write-Host "Health check succeeded on attempt $($attempt + 1)."
+                      $ready = $true
+                      break
+                  }
+              }
+              catch {
+                  Start-Sleep -Seconds 3
+              }
+          }
+
+          if (-not $ready) {
+              throw "API health check did not succeed at $healthUrl"
+          }
+
+      - name: Execute smoke test
+        shell: pwsh
+        run: |
+          try {
+              & "${{ github.workspace }}\scripts\smoke-test.ps1" -BaseUrl $env:API_SMOKE_URL
+          }
+          finally {
+              if ($env:API_JOB_ID) {
+                  $jobId = [int]$env:API_JOB_ID
+                  Stop-Job -Id $jobId -Force -ErrorAction SilentlyContinue
+                  $output = Receive-Job -Id $jobId -ErrorAction SilentlyContinue | Out-String
+                  if ($output) { Write-Host $output }
+                  Remove-Job -Id $jobId -Force -ErrorAction SilentlyContinue
+              }
+          }
+
+      - name: Package All-in-One zip
+        run: |
+          mkdir -p artifacts
+          Compress-Archive -Path publish/* -DestinationPath artifacts/HWInventory_AllInOne_${{ github.run_number }}.zip -Force
+        shell: pwsh
+
+      - name: Generate SHA256
+        run: |
+          Get-FileHash artifacts/HWInventory_AllInOne_${{ github.run_number }}.zip -Algorithm SHA256 | ForEach-Object {
+            $_.Hash | Out-File artifacts/HWInventory_AllInOne_${{ github.run_number }}.sha256 -Encoding ascii
+          }
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hw-inventory-aio
+          path: artifacts/

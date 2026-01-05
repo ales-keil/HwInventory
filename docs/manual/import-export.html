@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Import a Export</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1f2933; }
+    h1, h2, h3 { color: #111827; }
+    ul { margin-bottom: 1rem; }
+    ol { margin-bottom: 1rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+    th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
+    th { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+  <h1>Import a export dat</h1>
+  <p>Modul Import/Export umožňuje hromadné načtení inventáře i plánování exportů do CSV/XLSX. Všechny operace probíhají asynchronně a jsou auditovány.</p>
+
+  <h2>1. Importní workflow</h2>
+  <ol>
+    <li>Vytvořte job v sekci <strong>Import/Export &rarr; Importy</strong> – vyberte rozsah (Servery/Network/Workstations/Dictionaries) a formát souboru.</li>
+    <li>Nejprve spusťte <em>Dry-run</em>, který vrátí náhled chyb (povinná pole, duplicity, konflikty).</li>
+    <li>Po úspěšném dry-run nahrajte ostrý soubor, zvolte strategii konfliktů (přeskočit/aktualizovat/vytvořit) a odešlete do fronty.</li>
+    <li>Výsledky jsou dostupné v historii jobů – zobrazují počty vytvořených/aktualizovaných/zamítnutých záznamů a odkazy na logy.</li>
+  </ol>
+
+  <h2>2. Exportní workflow</h2>
+  <ol>
+    <li>V sekci <strong>Import/Export &rarr; Exporty</strong> zvolte scope (např. Workstations), formát a cílový adresář.</li>
+    <li>Nastavte volitelné zaslání e-mailové notifikace po dokončení.</li>
+    <li>Zadejte filtry ve formátu JSON – např. <code>[{"field":"Status","op":"Equals","value":"Active"}]</code>.</li>
+    <li>Po dokončení běhu je dostupný artefakt ke stažení po omezenou dobu. Počet stažení sleduje sloupec <em>Downloads</em>.</li>
+  </ol>
+
+  <h2>3. Mapování sloupců</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Scope</th>
+        <th>Klíčové sloupce</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Servery</td>
+        <td>Name, InventoryNumber, Environment, OperatingSystem, ServerRole, Status, VLAN1-3, IP1-3</td>
+      </tr>
+      <tr>
+        <td>Network</td>
+        <td>Name, InventoryNumber, DeviceType, Location, Status, VLAN1-3, IP1-3</td>
+      </tr>
+      <tr>
+        <td>Workstations</td>
+        <td>Name, InventoryNumber, OperatingSystem, WorkstationType, OwnerEmail, Location, Status</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Notifikace</h2>
+  <ul>
+    <li>Exporty i importy mohou poslat shrnutí e-mailem, pokud je aktivní SMTP konektor.</li>
+    <li>Do zprávy se zapisuje stav běhu, počty záznamů a případný odkaz na výsledný soubor.</li>
+    <li>V administraci lze upravit šablony předmětu i těla zprávy.</li>
+  </ul>
+
+  <h2>5. Tipy pro provoz</h2>
+  <ul>
+    <li>Velké soubory je vhodné spouštět mimo pracovní špičku – Quartz job respektuje limit paralelních běhů.</li>
+    <li>Exportní artefakty mají výchozí expiraci 7 dní. Hodnotu lze změnit v konfiguraci.</li>
+    <li>Pro bezpečnost lze importy omezit na whitelisting sloupců a validovat MAC/IP adresy.</li>
+  </ul>
+</body>
+</html>

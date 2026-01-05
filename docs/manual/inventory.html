@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Evidence zařízení</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1f2933; }
+    h1, h2, h3 { color: #111827; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+    th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
+    th { background: #f3f4f6; }
+    .tip { background: #eff6ff; border-left: 4px solid #1d4ed8; padding: 0.75rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Evidence serverů, síťových prvků a pracovních stanic</h1>
+  <p>Administrace nabízí tři specializované sekce – <strong>Servers</strong>, <strong>Network</strong> a <strong>Workstations</strong>. Všechny respektují přiřazené datové scopy (oddělení, lokace) a auditují každou změnu.</p>
+
+  <h2>1. Základní operace</h2>
+  <ul>
+    <li><strong>Vytvoření</strong> – tlačítko <em>Nový</em> otevře formulář s povinnými poli (název, inventární číslo, stav).</li>
+    <li><strong>Úpravy</strong> – editace probíhá inline, změny se ukládají tlačítkem <em>Uložit</em>.</li>
+    <li><strong>Vyřazení / Obnovení</strong> – hromadné akce dostupné z toolbaru (možnost vybrat více položek).</li>
+    <li><strong>Smazání</strong> – vyžaduje heslo aktuálně přihlášeného uživatele.</li>
+  </ul>
+
+  <h2>2. Specifická pole</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Entita</th>
+        <th>Povinná pole</th>
+        <th>Rozšířená pole</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Servery</td>
+        <td>Název, Inventární číslo, Prostředí, OS, Role/typ, Status</td>
+        <td>WSUS priorita, Správce, Zástupce, Rack pozice, VLAN1–3 + IP1–3, Podpora do</td>
+      </tr>
+      <tr>
+        <td>Síťové prvky</td>
+        <td>Název, Inventární číslo, Typ zařízení, Status</td>
+        <td>Umístění, Rack pozice, VLAN1–3 + IP1–3, SupportUntil, Správce/Zástupce</td>
+      </tr>
+      <tr>
+        <td>Pracovní stanice</td>
+        <td>Název, Inventární číslo, OS, Typ stanice, Status</td>
+        <td>Uživatel, Department, CPU/RAM/Storage, MAC, VLAN1–3 + IP1–3, Handover workflow</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Filtry a export</h2>
+  <ul>
+    <li>Každá tabulka podporuje rychlé filtry (status, prostředí, typ) a fulltext přes název/inventární číslo.</li>
+    <li>Rozšířené filtry v API přijímají JSON strukturu <code>{ field, op, value }</code> s whitelistem podporovaných polí.</li>
+    <li>Exporty lze plánovat z modulu <strong>Import/Export</strong> v několika formátech (CSV/XLSX).</li>
+  </ul>
+
+  <h2>4. Předávací protokoly (Workstations)</h2>
+  <ul>
+    <li>Tlačítko <em>Předat</em> vytvoří schvalovací požadavek – e-mail s tlačítky „Přijmout“ / „Odmítnout“.</li>
+    <li>Po potvrzení novým vlastníkem systém aktualizuje pole Owner, Department a Location a uloží auditní diff.</li>
+    <li>Super Admin může vynutit převod bez souhlasu – odesílá se informační e-mail s PDF protokolem.</li>
+  </ul>
+
+  <div class="tip">
+    <strong>Tip:</strong> Pro správnou vazbu VLAN/IP je nutné mít v číselnících definované všechny VLANy včetně typu (DMZ/LAN). UI zobrazí pouze aktivní položky číselníků.
+  </div>
+</body>
+</html>

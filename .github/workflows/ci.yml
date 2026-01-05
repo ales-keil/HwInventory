@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Dotnet info
+        run: dotnet --info
+
+      - name: Restore .NET
+        run: dotnet restore src/api/HWInventory.sln
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: NPM install
+        if: ${{ hashFiles('**/package-lock.json') != '' }}
+        run: npm ci
+        working-directory: src/web
+
+      - name: Build
+        run: dotnet build src/api/HWInventory.sln --configuration Release --no-restore
+
+      - name: Testy
+        run: dotnet test src/api/HWInventory.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"

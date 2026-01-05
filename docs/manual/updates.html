@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <title>Aktualizace a zálohy</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1f2933; }
+    h1, h2, h3 { color: #111827; }
+    ul, ol { margin-bottom: 1rem; }
+    .note { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 0.75rem 1rem; margin: 1rem 0; }
+    .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 0.75rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Aktualizace, zálohy a rollback</h1>
+  <p>Modul <strong>Aktualizace</strong> umožňuje nahrát balíček (ZIP/PKG), ověřit integritu, provést volitelnou zálohu a nasadit nové verze bez manuální práce na serveru.</p>
+
+  <h2>1. Příprava balíčku</h2>
+  <ul>
+    <li>Balíček obsahuje manifest <code>update.json</code> se jménem verze, kontrolním SHA256 součtem, požadovanou DB verzí a seznamem SQL skriptů.</li>
+    <li>Složka <code>publish/api</code> obsahuje build backendu, <code>publish/web</code> frontend, volitelně <code>scripts/post-deploy.ps1</code>.</li>
+  </ul>
+
+  <h2>2. Upload v UI</h2>
+  <ol>
+    <li>Otevřete <strong>Nastavení &rarr; Aktualizace</strong> a zvolte cílovou instanci.</li>
+    <li>Vyberte balíček a zaškrtněte volbu „Vytvořit zálohu před aktualizací“, pokud chcete archivovat stav aplikace.</li>
+    <li>Potvrďte, že máte platnou zálohu („Mám zálohu“) a spusťte proces.</li>
+  </ol>
+
+  <h2>3. Průběh nasazení</h2>
+  <ul>
+    <li>Modul volitelně aktivuje <code>app_offline.htm</code>, zastaví IIS site a vytvoří ZIP zálohu aktuálního stavu.</li>
+    <li>Rozbalí balíček, zkopíruje nové buildy do cílových složek a spustí SQL skripty z manifestu.</li>
+    <li>Po dokončení odešle log do historie aktualizací a případně e-mail notifikaci.</li>
+  </ul>
+
+  <h2>4. Rollback</h2>
+  <ol>
+    <li>V sekci <strong>Nastavení &rarr; Aktualizace</strong> otevřete historii a klikněte na položku, která obsahuje zálohu.</li>
+    <li>Stáhněte soubor zálohy a obnovte jej pomocí funkce <strong>Backup &amp; Restore</strong> (soubor + heslo, pokud bylo použito).</li>
+    <li>V případě potřeby spusťte znovu instalační skript se starší verzí balíku a obnovte databázi ze stejného bodu.</li>
+  </ol>
+
+  <h2>5. Zálohovací politika</h2>
+  <ul>
+    <li>Zálohy lze plánovat v sekci <strong>Backup &amp; Restore</strong> – podpora plných a inkrementálních běhů, šifrování AES-256.</li>
+    <li>Výsledné archivy lze ukládat lokálně, na SMB sdílení nebo do S3 kompatibilního úložiště.</li>
+    <li>Po dokončení zálohy se odešle notifikace přes SMTP, součástí je kontrolní součet a velikost.</li>
+  </ul>
+
+  <div class="note">
+    <strong>Tip:</strong> Před každou aktualizací doporučujeme spustit smoke test a zkontrolovat zdraví konektorů (SMTP, LDAP, tisk). V případě chyby lze rychle provést rollback na poslední funkční verzi.
+  </div>
+
+  <div class="warning">
+    <strong>Upozornění:</strong> Nepřenášejte aktualizační balíčky přes nezabezpečené kanály a vždy ověřujte SHA256 součet, aby nedošlo k neautorizovaným změnám.
+  </div>
+</body>
+</html>
